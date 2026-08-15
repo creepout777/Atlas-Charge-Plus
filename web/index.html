@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="description" content="Atlas Charge Plus+ — On-demand mobile EV charging across the UK. Request a charging truck to your location and charge your electric vehicle anywhere.">
+  <meta name="theme-color" content="#ffffff">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="mobile-web-app-capable" content="yes">
+
+  <!-- Open Graph -->
+  <meta property="og:title" content="Atlas Charge Plus+ | Mobile EV Charging">
+  <meta property="og:description" content="Request a charging truck to your location. Charge your EV anywhere in the UK.">
+  <meta property="og:type" content="website">
+
+  <title>Atlas Charge Plus+ | Mobile EV Charging</title>
+
+  <!-- MapLibre GL 3D Map CSS -->
+  <link href="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.css" rel="stylesheet" />
+
+  <!-- Leaflet CSS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+    integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+    crossorigin="" />
+
+  <!-- App CSS -->
+  <link rel="stylesheet" href="css/index.css">
+</head>
+<body>
+  <div id="app">
+    <!-- ═══ Full-Screen Map ═══ -->
+    <div id="map-container"></div>
+
+    <!-- ═══ Header Bar ═══ -->
+    <header class="header">
+      <div class="header-logo">
+        <div class="header-logo-icon">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+        </div>
+        <div class="header-logo-text">Atlas <span>Charge+</span></div>
+      </div>
+
+      <div class="header-search" id="header-search">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+        </svg>
+        <input type="text" id="search-input" placeholder="Search locations across the UK..." autocomplete="off">
+      </div>
+
+      <div class="header-actions">
+        <button class="header-btn" id="btn-notifications" aria-label="Notifications">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+            <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+          </svg>
+          <span class="badge">3</span>
+        </button>
+        <div class="header-avatar" id="btn-profile" aria-label="Profile">AM</div>
+      </div>
+    </header>
+
+    <!-- ═══ Map Controls ═══ -->
+    <div class="map-controls">
+      <button class="map-control-btn" id="btn-map-style" aria-label="Toggle map style" title="Switch Map Style (Satellite / Vector)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <polygon points="12 2 2 7 12 12 22 7 12 2"/>
+          <polyline points="2 17 12 22 22 17"/>
+          <polyline points="2 12 12 17 22 12"/>
+        </svg>
+      </button>
+      <button class="map-control-btn" id="btn-tilt-3d" aria-label="Toggle 3D view" title="Toggle 3D View">
+        <span style="font-size:11px;font-weight:var(--fw-bold);color:var(--emerald)">3D</span>
+      </button>
+      <button class="map-control-btn locate-btn" id="btn-locate" aria-label="Find my location">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="3"/>
+          <path d="M12 2v4m0 12v4M2 12h4m12 0h4"/>
+        </svg>
+      </button>
+      <button class="map-control-btn" id="btn-zoom-in" aria-label="Zoom in">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+          <line x1="11" y1="8" x2="11" y2="14"/><line x1="8" y1="11" x2="14" y2="11"/>
+        </svg>
+      </button>
+      <button class="map-control-btn" id="btn-zoom-out" aria-label="Zoom out">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+          <line x1="8" y1="11" x2="14" y2="11"/>
+        </svg>
+      </button>
+    </div>
+
+    <!-- ═══ Bottom Sheet ═══ -->
+    <div class="bottom-sheet peek" id="bottom-sheet">
+      <div id="sheet-body">
+        <!-- Populated by UI.render() -->
+        <div class="sheet-handle-area"><div class="sheet-handle"></div></div>
+        <div class="sheet-header">
+          <div>
+            <div class="sheet-title">Loading...</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══ Side Drawer ═══ -->
+    <div class="drawer-overlay" id="drawer-overlay"></div>
+    <div class="drawer" id="drawer">
+      <div id="drawer-content">
+        <!-- Populated by UI.initDrawer() -->
+      </div>
+    </div>
+
+    <!-- ═══ Modal ═══ -->
+    <div class="modal-overlay" id="modal-overlay">
+      <div class="modal" id="modal">
+        <!-- Populated dynamically -->
+      </div>
+    </div>
+
+    <!-- ═══ Toast Container ═══ -->
+    <div class="toast-container" id="toast-container"></div>
+  </div>
+
+  <!-- ═══ Scripts ═══ -->
+  <!-- Three.js 3D Engine JS -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+
+  <!-- MapLibre GL 3D Map JS -->
+  <script src="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.js"></script>
+
+  <!-- Leaflet JS -->
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+    integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+    crossorigin=""></script>
+
+  <!-- App Modules (order matters: data → bridge → map → ui → app) -->
+  <script src="js/data.js"></script>
+  <script src="js/bridge.js"></script>
+  <script src="js/map.js"></script>
+  <script src="js/ui.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>

@@ -2,26 +2,39 @@ import React, { useEffect, useRef } from 'react';
 
 const SITE_KEY = '0x4AAAAAAESKTddDOH1mr-3p';
 
-export default function TurnstileWidget({ onVerify, onExpire }) {
+const TurnstileWidget = React.memo(function TurnstileWidget({ onVerify, onExpire }) {
   const containerRef = useRef(null);
   const widgetIdRef = useRef(null);
+  const onVerifyRef = useRef(onVerify);
+  const onExpireRef = useRef(onExpire);
+
+  // Keep references fresh without causing re-mounts
+  useEffect(() => {
+    onVerifyRef.current = onVerify;
+    onExpireRef.current = onExpire;
+  });
 
   useEffect(() => {
     let isMounted = true;
+    let timer = null;
 
-    // Register global callbacks for Cloudflare Turnstile declarative render
+    // Define global callback handler once
     window._onTurnstileSuccess = (token) => {
-      if (isMounted && onVerify) onVerify(token);
+      if (isMounted && onVerifyRef.current) {
+        onVerifyRef.current(token);
+      }
     };
 
     window._onTurnstileExpired = () => {
-      if (isMounted && onExpire) onExpire();
+      if (isMounted && onExpireRef.current) {
+        onExpireRef.current();
+      }
     };
 
     function renderWidget() {
       if (!window.turnstile || !containerRef.current || widgetIdRef.current !== null) return;
 
-      // Check if Cloudflare already rendered into the element via data- attributes
+      // If already rendered into the element, don't duplicate
       if (containerRef.current.hasChildNodes()) return;
 
       try {
@@ -30,13 +43,17 @@ export default function TurnstileWidget({ onVerify, onExpire }) {
           theme: 'light',
           size: 'normal',
           callback: (token) => {
-            if (isMounted && onVerify) onVerify(token);
+            if (isMounted && onVerifyRef.current) {
+              onVerifyRef.current(token);
+            }
           },
           'expired-callback': () => {
-            if (isMounted && onExpire) onExpire();
+            if (isMounted && onExpireRef.current) {
+              onExpireRef.current();
+            }
           },
           'error-callback': (code) => {
-            console.error('Turnstile challenge error code:', code);
+            console.error('Turnstile challenge notice code:', code);
           },
         });
       } catch (err) {
@@ -47,17 +64,17 @@ export default function TurnstileWidget({ onVerify, onExpire }) {
     if (window.turnstile) {
       renderWidget();
     } else {
-      const timer = setInterval(() => {
+      timer = setInterval(() => {
         if (window.turnstile) {
           renderWidget();
           clearInterval(timer);
         }
       }, 150);
-      return () => clearInterval(timer);
     }
 
     return () => {
       isMounted = false;
+      if (timer) clearInterval(timer);
       if (widgetIdRef.current !== null && window.turnstile) {
         try {
           window.turnstile.remove(widgetIdRef.current);
@@ -67,7 +84,7 @@ export default function TurnstileWidget({ onVerify, onExpire }) {
         widgetIdRef.current = null;
       }
     };
-  }, [onVerify, onExpire]);
+  }, []); // Run strictly ONCE on mount!
 
   return (
     <div style={{ marginBottom: '16px', display: 'flex', justifyContent: 'center', width: '100%', minHeight: '65px' }}>
@@ -81,4 +98,6 @@ export default function TurnstileWidget({ onVerify, onExpire }) {
       />
     </div>
   );
-}
+});
+
+export default TurnstileWidget;

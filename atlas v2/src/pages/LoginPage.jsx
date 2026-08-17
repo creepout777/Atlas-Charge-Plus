@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { UserCheck, Shield, Truck, Zap, Lock, Mail, Phone, User, AlertCircle, CheckCircle2, Crown, ShieldAlert, KeyRound, Check, RefreshCw } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
@@ -13,7 +13,7 @@ export default function LoginPage() {
   const navigate = useNavigate();
   const location = useLocation();
 
-  const [mode, setMode] = useState('signin'); // 'signin' | 'signup'
+  const [mode, setMode] = useState('signin'); // 'signin' | 'signup' | 'forgot'
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [fullName, setFullName] = useState('');
@@ -33,6 +33,16 @@ export default function LoginPage() {
   // Bot Protection / Captcha State
   const [captchaVerified, setCaptchaVerified] = useState(true);
   const [turnstileToken, setTurnstileToken] = useState('cf_turnstile_verified_token');
+
+  const handleTurnstileVerify = useCallback((token) => {
+    setTurnstileToken(token);
+    setCaptchaVerified(true);
+  }, []);
+
+  const handleTurnstileExpire = useCallback(() => {
+    setTurnstileToken('');
+    setCaptchaVerified(false);
+  }, []);
 
   // Password Policy Analysis
   const passwordCriteria = {
@@ -338,8 +348,8 @@ export default function LoginPage() {
 
           {/* Live Cloudflare Turnstile Verification Widget */}
           <TurnstileWidget
-            onVerify={(token) => setTurnstileToken(token)}
-            onExpire={() => setTurnstileToken('')}
+            onVerify={handleTurnstileVerify}
+            onExpire={handleTurnstileExpire}
           />
 
           <button type="submit" className="btn-emerald" disabled={isSubmitting || lockoutTimeLeft > 0}>

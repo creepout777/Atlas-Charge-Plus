@@ -391,7 +391,7 @@ export default function LoginPage() {
             </div>
             <div>
               <div style={{ fontWeight: 800, fontSize: '14px' }}>SuperAdmin Console (admin@atlascharge.com)</div>
-              <div style={{ fontSize: '11px', color: 'var(--slate-400)' }}>Full platform access: Telemetry, Tariffs, Fleet & Users</div>
+              <div style={{ fontSize: '11px', color: 'var(--slate-400)' }}>Password: <b>Password123!</b> · Full platform access: Telemetry, Tariffs, Fleet & Users</div>
             </div>
           </div>
           <span className="brand-pill" style={{ background: '#10b981', color: '#022c22' }}>SUPER ADMIN</span>
@@ -409,7 +409,7 @@ export default function LoginPage() {
             </div>
             <div>
               <div style={{ fontWeight: 800, fontSize: '14px' }}>Fleet Dispatcher (dispatcher@atlascharge.com)</div>
-              <div style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>Live truck positions, queue management & UI dictionary</div>
+              <div style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>Password: <b>Password123!</b> · Live truck positions, queue management & UI dictionary</div>
             </div>
           </div>
           <span className="brand-pill" style={{ background: 'var(--slate-100)', color: 'var(--slate-700)' }}>DISPATCHER</span>
@@ -426,8 +426,8 @@ export default function LoginPage() {
               <Truck size={20} />
             </div>
             <div>
-              <div style={{ fontWeight: 800, fontSize: '14px' }}>Technician Cockpit (marcus.webb.548@atlascharge.com)</div>
-              <div style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>Dispatch alerts, navigation & 150kW charge controls</div>
+              <div style={{ fontWeight: 800, fontSize: '14px' }}>Technician Cockpit (driver@atlascharge.com)</div>
+              <div style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>Password: <b>Password123!</b> · Dispatch alerts, GPS navigation & charge controls</div>
             </div>
           </div>
           <span className="brand-pill" style={{ background: 'var(--amber-light)', color: 'var(--amber-primary)' }}>DRIVER</span>
@@ -445,7 +445,7 @@ export default function LoginPage() {
             </div>
             <div>
               <div style={{ fontWeight: 800, fontSize: '14px' }}>Client Profile (alex.morgan@email.com)</div>
-              <div style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>On-demand EV charging request, live map & invoices</div>
+              <div style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>Password: <b>Password123!</b> · On-demand EV charging request, live map & invoices</div>
             </div>
           </div>
           <span className="brand-pill">CLIENT</span>

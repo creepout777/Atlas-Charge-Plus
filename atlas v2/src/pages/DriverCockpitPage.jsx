@@ -60,6 +60,14 @@ export default function DriverCockpitPage() {
     return ordersList.find(o => o.assigned_driver_id === currentUser?.id && o.status !== 'COMPLETED' && o.status !== 'CANCELED') || null;
   }, [ordersList, currentUser]);
 
+  const jobVehicle = useMemo(() => {
+    return vehicles.find(v => v.id === myActiveJob?.vehicle_id) || null;
+  }, [vehicles, myActiveJob]);
+
+  const jobPackage = useMemo(() => {
+    return packages.find(p => p.id === myActiveJob?.charge_package_id) || null;
+  }, [packages, myActiveJob]);
+
   // Find open unassigned queue bookings
   const availableQueueJobs = useMemo(() => {
     return ordersList.filter(o => !o.assigned_driver_id && (o.status === 'WAITING_APPROVAL' || o.status === 'PENDING_DISPATCH' || o.status === 'PENDING'));
@@ -412,9 +420,6 @@ export default function DriverCockpitPage() {
       is_on_duty: newStatus !== 'OFF_DUTY',
     });
   };
-
-  const jobVehicle = vehicles.find(v => v.id === myActiveJob?.vehicle_id);
-  const jobPackage = packages.find(p => p.id === myActiveJob?.charge_package_id);
 
   return (
     <div style={{ position: 'relative', height: 'calc(100vh - 64px)', overflow: 'hidden' }}>

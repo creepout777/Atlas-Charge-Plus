@@ -108,16 +108,21 @@ export default function LoginPage() {
           throw new Error('Please choose a stronger password with at least 8 characters including numbers and letters.');
         }
 
-        await signUp(email, password, fullName, phoneNumber, 'CLIENT', { captchaToken: turnstileToken });
-        setSuccessMsg('EV Client account created successfully! Signing in...');
-        setTimeout(async () => {
-          try {
-            await signIn(email, password);
-            navigate('/', { replace: true });
-          } catch {
-            setSuccessMsg('Account registered! You can now sign in with your email & password.');
-          }
-        }, 800);
+        const res = await signUp(email, password, fullName, phoneNumber, 'CLIENT', { captchaToken: turnstileToken });
+        if (res?.user && !res?.session) {
+          setSuccessMsg(`Account created! A confirmation email has been sent to ${email}. Please check your inbox and click the verification link to log in.`);
+          setUnconfirmedEmail(email);
+        } else {
+          setSuccessMsg('EV Client account created successfully! Signing in...');
+          setTimeout(async () => {
+            try {
+              await signIn(email, password);
+              navigate('/', { replace: true });
+            } catch {
+              setSuccessMsg('Account registered! You can now sign in with your email & password.');
+            }
+          }, 800);
+        }
       } else {
         const res = await signIn(email, password, { captchaToken: turnstileToken });
         setFailedAttempts(0);

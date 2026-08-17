@@ -20,6 +20,8 @@ export default function ConnectorsHardwarePage() {
 
   const { currentUser } = useAuth();
   const isSuperAdmin = currentUser?.role === 'SUPER_ADMIN';
+  const isDispatcher = currentUser?.role === 'FLEET_DISPATCHER';
+  const canToggle = isSuperAdmin || isDispatcher;
 
   // --- Modal States ---
   // 1. Connector Standard Modals (SuperAdmin Only)
@@ -102,6 +104,7 @@ export default function ConnectorsHardwarePage() {
   };
 
   const handleToggleConnector = async (c) => {
+    if (!canToggle) return;
     const newStatus = !(c.is_active !== false);
     await toggleConnectorActive(c.id, newStatus);
   };
@@ -127,6 +130,7 @@ export default function ConnectorsHardwarePage() {
   };
 
   const handleToggleAssemblyHealth = async (tc) => {
+    if (!canToggle) return;
     const nextStatus = !tc.is_operational;
     await updateTruckConnector(tc.id, {
       truck_id: tc.truck_id,
@@ -178,7 +182,7 @@ export default function ConnectorsHardwarePage() {
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <h1 style={{ fontSize: '24px', fontWeight: 900 }}>Charging Hardware & Connector Specs</h1>
             <span className="brand-pill" style={{ background: 'var(--emerald-light)', color: 'var(--emerald-darker)' }}>
-              <Shield size={12} /> {isSuperAdmin ? 'Executive Hardware Control' : 'Fleet Hardware Specs'}
+              <Shield size={12} /> {isSuperAdmin ? 'Executive Hardware Control' : isDispatcher ? 'Fleet Dispatcher Control' : 'Fleet Hardware Standards'}
             </span>
           </div>
           <div style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>
@@ -231,27 +235,38 @@ export default function ConnectorsHardwarePage() {
                     </div>
                   </div>
 
-                  {/* Status Toggle Button: Accessible to both SuperAdmin and Dispatcher */}
-                  <button
-                    onClick={() => handleToggleConnector(c)}
-                    style={{
+                  {/* Status Toggle Button: Interactive for Staff (Dispatcher & Admin), Read-Only for Guests */}
+                  {canToggle ? (
+                    <button
+                      onClick={() => handleToggleConnector(c)}
+                      style={{
+                        background: isConnActive ? 'var(--emerald-light)' : 'var(--slate-100)',
+                        color: isConnActive ? 'var(--emerald-darker)' : 'var(--slate-600)',
+                        border: '1px solid ' + (isConnActive ? 'rgba(16, 185, 129, 0.4)' : 'rgba(148, 163, 184, 0.4)'),
+                        borderRadius: 'var(--radius-sm)',
+                        padding: '4px 10px',
+                        fontSize: '11px',
+                        fontWeight: 800,
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '5px',
+                        transition: 'all 0.15s ease-in-out'
+                      }}
+                      title="Click to toggle standard status (Active / Archived)"
+                    >
+                      <Power size={11} /> {isConnActive ? 'Active Standard' : 'Archived'}
+                    </button>
+                  ) : (
+                    <span className="brand-pill" style={{
                       background: isConnActive ? 'var(--emerald-light)' : 'var(--slate-100)',
                       color: isConnActive ? 'var(--emerald-darker)' : 'var(--slate-600)',
-                      border: '1px solid ' + (isConnActive ? 'rgba(16, 185, 129, 0.4)' : 'rgba(148, 163, 184, 0.4)'),
-                      borderRadius: 'var(--radius-sm)',
-                      padding: '4px 10px',
                       fontSize: '11px',
                       fontWeight: 800,
-                      cursor: 'pointer',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '5px',
-                      transition: 'all 0.15s ease-in-out'
-                    }}
-                    title="Click to toggle standard status (Active / Archived)"
-                  >
-                    <Power size={11} /> {isConnActive ? 'Active Standard' : 'Archived'}
-                  </button>
+                    }}>
+                      ● {isConnActive ? 'Active Standard' : 'Archived'}
+                    </span>
+                  )}
                 </div>
 
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px', marginBottom: isSuperAdmin ? '14px' : '0' }}>
@@ -338,27 +353,38 @@ export default function ConnectorsHardwarePage() {
                       {parentTruck ? parentTruck.truck_code : 'TRUCK-ASSEMBLY'}
                     </span>
                     
-                    {/* Status Toggle Button: Accessible to both SuperAdmin and Dispatcher */}
-                    <button
-                      onClick={() => handleToggleAssemblyHealth(tc)}
-                      style={{
+                    {/* Status Toggle Button: Interactive for Staff (Dispatcher & Admin), Read-Only for Guests */}
+                    {canToggle ? (
+                      <button
+                        onClick={() => handleToggleAssemblyHealth(tc)}
+                        style={{
+                          background: tc.is_operational ? 'var(--emerald-light)' : 'var(--red-light)',
+                          color: tc.is_operational ? 'var(--emerald-darker)' : 'var(--red-primary)',
+                          fontSize: '11px',
+                          fontWeight: 800,
+                          border: '1px solid ' + (tc.is_operational ? 'rgba(16, 185, 129, 0.4)' : 'rgba(239, 68, 68, 0.4)'),
+                          borderRadius: 'var(--radius-sm)',
+                          padding: '3px 8px',
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '4px',
+                          transition: 'all 0.15s ease-in-out'
+                        }}
+                        title="Click to toggle hardware status (Operational / Fault)"
+                      >
+                        <Power size={11} /> {tc.is_operational ? 'Operational' : 'Fault'}
+                      </button>
+                    ) : (
+                      <span className="brand-pill" style={{
                         background: tc.is_operational ? 'var(--emerald-light)' : 'var(--red-light)',
                         color: tc.is_operational ? 'var(--emerald-darker)' : 'var(--red-primary)',
-                        fontSize: '11px',
+                        fontSize: '10px',
                         fontWeight: 800,
-                        border: '1px solid ' + (tc.is_operational ? 'rgba(16, 185, 129, 0.4)' : 'rgba(239, 68, 68, 0.4)'),
-                        borderRadius: 'var(--radius-sm)',
-                        padding: '3px 8px',
-                        cursor: 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '4px',
-                        transition: 'all 0.15s ease-in-out'
-                      }}
-                      title="Click to toggle hardware status (Operational / Fault)"
-                    >
-                      <Power size={11} /> {tc.is_operational ? 'Operational' : 'Fault'}
-                    </button>
+                      }}>
+                        ● {tc.is_operational ? 'Operational' : 'Fault'}
+                      </span>
+                    )}
                   </div>
                   <div style={{ fontWeight: 800, fontSize: '15px', marginBottom: '2px' }}>{parentConn?.display_name || 'CCS Fast Connector'}</div>
                   <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginBottom: '10px' }}>

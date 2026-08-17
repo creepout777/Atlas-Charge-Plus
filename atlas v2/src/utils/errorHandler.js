@@ -38,13 +38,25 @@ export function formatErrorMessage(err, context = 'general') {
 
   // --- 2. Database Constraint & Relation Sanitization (Hide Foreign Keys / Schemas) ---
   if (lower.includes('foreign key') || lower.includes('violates') || lower.includes('referenced from table') || lower.includes('constraint')) {
+    if (lower.includes('assigned_driver_id') || lower.includes('assigned_truck_id')) {
+      return 'This resource is linked to an ongoing dispatch booking. Please reassign the job or change its status first.';
+    }
+    if (lower.includes('driver_profiles')) {
+      return 'This vehicle is currently assigned to a driver. Please unassign the driver before deleting.';
+    }
+    if (lower.includes('truck_connectors')) {
+      return 'This unit has mounted charging assemblies attached. Unmount assemblies before deleting.';
+    }
     if (context === 'tariff' || context === 'package') {
       return 'This pricing tier is linked to active charging records and cannot be permanently removed. It has been safely archived instead.';
     }
-    if (context === 'driver' || context === 'fleet') {
-      return 'This unit or technician is assigned to active dispatch orders. Reassign pending jobs before modifying.';
+    if (context === 'driver') {
+      return 'Unable to modify or delete this technician due to active vehicle or session linkages.';
     }
-    return 'This item is currently connected to other active system records and cannot be modified directly.';
+    if (context === 'fleet') {
+      return 'Unable to decommission this mobile unit while active assemblies or drivers are attached.';
+    }
+    return 'This item has dependent records and cannot be deleted directly.';
   }
 
   if (lower.includes('not-null') || lower.includes('null value in column')) {

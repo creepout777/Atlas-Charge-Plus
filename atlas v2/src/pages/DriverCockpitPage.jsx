@@ -610,49 +610,51 @@ export default function DriverCockpitPage() {
             )}
 
             {myActiveJob.status === 'ARRIVED' && (
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '10px' }}>
-                <a
-                  href="tel:+447911999888"
-                  className="btn-outline"
-                  style={{ padding: '12px 0', fontSize: '13px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', fontWeight: 800 }}
-                >
-                  <Phone size={15} /> Call Client
-                </a>
-                <button className="btn-emerald" style={{ fontSize: '14px', padding: '12px 0' }} onClick={handleStartCharging}>
-                  <Zap size={16} /> Connect Cable & Start Charge
-                </button>
-              </div>
+              <button className="btn-emerald" style={{ fontSize: '15px', padding: '12px 0' }} onClick={handleStartCharging}>
+                <Zap size={18} /> Connect CCS2 Cable & Start 150kW DC Dispensing
+              </button>
             )}
 
             {myActiveJob.status === 'CHARGING' && (
               <div>
-                <div style={{ background: 'linear-gradient(135deg, #0f172a, #1e293b)', padding: '18px', borderRadius: 'var(--radius-md)', border: '1px solid rgba(16, 185, 129, 0.3)', marginBottom: '14px', textAlign: 'center' }}>
-                  <div style={{ width: '48px', height: '48px', background: 'rgba(16, 185, 129, 0.15)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 10px', color: '#10b981' }}>
+                <div style={{ background: 'linear-gradient(135deg, #0f172a, #1e293b)', padding: '16px', borderRadius: 'var(--radius-md)', border: '1px solid rgba(16, 185, 129, 0.3)', marginBottom: '14px', textAlign: 'center' }}>
+                  <div style={{ width: '44px', height: '44px', background: 'rgba(16, 185, 129, 0.15)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 10px', color: '#10b981' }}>
                     <Zap size={24} className="pulse" />
                   </div>
-                  <div style={{ fontWeight: 900, fontSize: '17px', color: '#fff' }}>⚡ 150kW DC Rapid Charging In Progress</div>
+                  <div style={{ fontWeight: 900, fontSize: '16px', color: '#fff' }}>⚡ 150kW DC Fast Charge In Progress</div>
                   <div style={{ fontSize: '12px', color: 'var(--slate-400)', marginTop: '4px' }}>
-                    Connected to <b>{jobVehicle ? `${jobVehicle.make} ${jobVehicle.model}` : 'Client EV'}</b> · {myActiveJob.target_kwh || jobPackage?.target_kwh || 35} kWh Package
+                    High-power CCS2 DC dispensing active. Unplug cable and confirm completion when done.
                   </div>
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '10px' }}>
-                  <a
-                    href="tel:+447911999888"
-                    className="btn-outline"
-                    style={{ padding: '14px 0', fontSize: '14px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', fontWeight: 800 }}
-                  >
-                    <Phone size={16} /> Call Client
-                  </a>
-
-                  <button
-                    className="btn-emerald"
-                    style={{ fontSize: '15px', padding: '14px 0', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
-                    onClick={handleCompleteCharge}
-                  >
-                    <CheckCircle2 size={18} /> 🔌 Unplug Charger & Mark Done
-                  </button>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px', marginBottom: '16px' }}>
+                  <div className="metric-card">
+                    <div style={{ fontSize: '10px', color: 'var(--text-muted)' }}>DELIVERED</div>
+                    <div style={{ fontWeight: 900, fontSize: '16px', color: 'var(--emerald-dark)' }}>
+                      {myActiveJob.target_kwh || jobPackage?.target_kwh || 35.0} kWh
+                    </div>
+                  </div>
+                  <div className="metric-card">
+                    <div style={{ fontSize: '10px', color: 'var(--text-muted)' }}>TOTAL BILLED</div>
+                    <div style={{ fontWeight: 900, fontSize: '16px', color: 'var(--slate-800)' }}>
+                      £{myActiveJob.estimated_total_amount || '17.25'}
+                    </div>
+                  </div>
+                  <div className="metric-card">
+                    <div style={{ fontSize: '10px', color: 'var(--text-muted)' }}>CONNECTOR</div>
+                    <div style={{ fontWeight: 900, fontSize: '15px', color: '#0284c7' }}>
+                      CCS2 Rapid
+                    </div>
+                  </div>
                 </div>
+
+                <button
+                  className="btn-emerald"
+                  style={{ fontSize: '15px', padding: '14px 0', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
+                  onClick={handleCompleteCharge}
+                >
+                  <CheckCircle2 size={18} /> 🔌 Unplug Charger & Press Done
+                </button>
               </div>
             )}
           </div>

@@ -686,10 +686,6 @@ export default function FleetConsolePage() {
               {(drivers || []).map((drv) => {
                 const assignedTruck = (trucks || []).find(t => t.id === drv.assigned_truck_id);
                 const dutyMeta = DRIVER_STATUS_OPTIONS.find(o => o.value === drv.duty_status) || DRIVER_STATUS_OPTIONS[0];
-                const driverReviews = reviews.filter(r => r.driver_user_id === drv.user_id);
-                const displayRating = driverReviews.length > 0
-                  ? (driverReviews.reduce((acc, r) => acc + (parseFloat(r.rating_stars) || 5), 0) / driverReviews.length).toFixed(2)
-                  : (parseFloat(drv.rating_score) || 5.0).toFixed(2);
 
                 return (
                   <div key={drv.user_id} className="card-glass">
@@ -736,7 +732,7 @@ export default function FleetConsolePage() {
                       <div className="metric-card">
                         <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>RATING</div>
                         <div style={{ fontWeight: 800, fontSize: '14px', color: '#f59e0b', display: 'flex', alignItems: 'center', gap: '2px' }}>
-                          <Star size={13} fill="#f59e0b" /> {displayRating}
+                          <Star size={13} fill="#f59e0b" /> {drv.rating_score || '5.00'}
                         </div>
                       </div>
                       <div className="metric-card">
@@ -864,7 +860,7 @@ export default function FleetConsolePage() {
                         <select
                           className="metric-card"
                           style={{ padding: '4px 6px', fontSize: '12px', outline: 'none' }}
-                          value={o.assigned_driver_id || ''}
+                          value={o.assigned_driver_id || o.assigned_driver_user_id || ''}
                           onChange={(e) => assignDriverToOrder(o.id, e.target.value)}
                         >
                           <option value="">-- Unassigned --</option>
@@ -873,7 +869,7 @@ export default function FleetConsolePage() {
                           ))}
                         </select>
                       ) : (
-                        <span>{drivers.find(d => d.user_id === o.assigned_driver_id)?.full_name || 'Unassigned'}</span>
+                        <span>{drivers.find(d => d.user_id === (o.assigned_driver_id || o.assigned_driver_user_id))?.full_name || 'Unassigned'}</span>
                       )}
                     </td>
                     <td style={{ padding: '12px 8px' }}>

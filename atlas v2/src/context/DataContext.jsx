@@ -333,6 +333,25 @@ export function DataProvider({ children }) {
         setReviews(prev => prev.filter(r => r.id !== tempId));
         throw error;
       }
+
+      // Update driver's rating_score in driver_profiles if driver_user_id exists
+      if (reviewData.driver_user_id) {
+        try {
+          const allDriverReviews = [...reviews.filter(r => r.driver_user_id === reviewData.driver_user_id), tempRecord];
+          const avg = allDriverReviews.reduce((s, r) => s + (parseFloat(r.rating_stars) || 5), 0) / allDriverReviews.length;
+          const newScore = parseFloat(avg.toFixed(2));
+
+          await supabase
+            .from('driver_profiles')
+            .update({ rating_score: newScore })
+            .eq('user_id', reviewData.driver_user_id);
+
+          await refetchDrivers();
+        } catch (drvErr) {
+          console.warn('Driver score sync error:', drvErr);
+        }
+      }
+
       await refetchReviews();
       return data;
     } catch (e) {

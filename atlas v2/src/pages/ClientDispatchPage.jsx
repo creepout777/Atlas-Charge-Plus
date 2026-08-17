@@ -13,7 +13,7 @@ import StarRating from '../components/shared/StarRating';
 export default function ClientDispatchPage() {
   const { currentUser } = useAuth();
   const { ordersList, createOrder, updateStatus } = useOrder();
-  const { vehicles, packages, connectors, trucks, drivers, addReview } = useData();
+  const { vehicles, packages, connectors, trucks, drivers, tariffs, addReview } = useData();
 
   // Find this client's active order
   const activeOrder = useMemo(() => {
@@ -158,16 +158,19 @@ export default function ClientDispatchPage() {
     const pkg = selectedPkg || activePackages[0] || packages[0];
     const veh = selectedVehicle || vehicles[0];
     const conn = selectedConnector || activeConnectors[0] || connectors[0];
+    const trf = tariffs && tariffs.length > 0 ? tariffs[0] : null;
     const kwh = pkg?.target_kwh || 35;
-    const callout = 5.00;
-    const kwhPrice = parseFloat((kwh * 0.35).toFixed(2));
+    const callout = parseFloat(trf?.base_callout_fee) || 5.00;
+    const perKwhRate = parseFloat(trf?.per_kwh_rate) || 0.35;
+    const kwhPrice = parseFloat((kwh * perKwhRate).toFixed(2));
     const total = parseFloat((callout + kwhPrice).toFixed(2));
 
     try {
       await createOrder({
-        charge_package_id: pkg?.id,
-        connector_type_id: conn?.id,
-        vehicle_id: veh?.id,
+        tariff_id: trf?.id || null,
+        charge_package_id: pkg?.id || null,
+        connector_type_id: conn?.id || null,
+        vehicle_id: veh?.id || null,
         target_address: targetAddress,
         target_lat: targetCoords[0],
         target_lng: targetCoords[1],

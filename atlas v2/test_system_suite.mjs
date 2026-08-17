@@ -73,11 +73,11 @@ async function runFullSystemDiagnostics() {
     recordResult('Auth & Roles', 'Client Authentication (Alex Morgan)', !cErr && !!clientUser, `User ID: ${clientUser?.id?.slice(0, 8)}`);
 
     const { data: dData, error: dErr } = await driverAuth.auth.signInWithPassword({
-      email: 'jack.thompson.492@atlascharge.com',
+      email: 'marcus.webb.242@atlascharge.com',
       password: 'Password123!',
     });
     driverUser = dData?.user;
-    recordResult('Auth & Roles', 'Driver Authentication (Jack Thompson)', !dErr && !!driverUser, `Driver ID: ${driverUser?.id?.slice(0, 8)}`);
+    recordResult('Auth & Roles', 'Driver Authentication (Marcus Webb)', !dErr && !!driverUser, `Driver ID: ${driverUser?.id?.slice(0, 8)}`);
 
     const { data: dispData, error: dispErr } = await dispatcherAuth.auth.signInWithPassword({
       email: 'dispatcher@atlascharge.com',
@@ -158,7 +158,8 @@ async function runFullSystemDiagnostics() {
       .select()
       .single();
 
-    recordResult('Driver Cockpit', 'Driver Shift Duty State (AVAILABLE)', !dutyErr && dutyUpd?.duty_status === 'AVAILABLE', `Assigned Unit: ${assignedTruck.truck_code}`);
+    if (dutyErr) console.error('Duty update error:', dutyErr);
+    recordResult('Driver Cockpit', 'Driver Shift Duty State (AVAILABLE)', !dutyErr && dutyUpd?.duty_status === 'AVAILABLE', dutyErr ? dutyErr.message : `Assigned Unit: ${assignedTruck.truck_code}`);
 
     const { data: claimed, error: claimErr } = await driverAuth
       .from('orders')
@@ -171,7 +172,8 @@ async function runFullSystemDiagnostics() {
       .select()
       .single();
 
-    recordResult('Driver Cockpit', 'Claim Dispatch Job (EN_ROUTE)', !claimErr && claimed?.status === 'EN_ROUTE', `Assigned to Jack Thompson`);
+    if (claimErr) console.error('Order claim error:', claimErr);
+    recordResult('Driver Cockpit', 'Claim Dispatch Job (EN_ROUTE)', !claimErr && claimed?.status === 'EN_ROUTE', claimErr ? claimErr.message : `Assigned to Jack Thompson`);
 
     const { data: arrived, error: arrErr } = await driverAuth
       .from('orders')

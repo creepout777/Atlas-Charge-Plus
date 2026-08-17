@@ -372,6 +372,29 @@ body {
   animation: radar-ping 1.8s cubic-bezier(0, 0, 0.2, 1) infinite;
 }
 
+.pending-job-pulse-marker {
+  width: 22px;
+  height: 22px;
+  background: #f59e0b;
+  border: 3px solid #ffffff;
+  border-radius: 50%;
+  box-shadow: 0 0 15px rgba(245, 158, 11, 0.8);
+  position: relative;
+  cursor: pointer;
+}
+
+.pending-job-pulse-marker::after {
+  content: '';
+  position: absolute;
+  top: -8px;
+  left: -8px;
+  right: -8px;
+  bottom: -8px;
+  border-radius: 50%;
+  border: 2px solid #f59e0b;
+  animation: radar-ping 1.6s cubic-bezier(0, 0, 0.2, 1) infinite;
+}
+
 .truck-heading-marker {
   width: 44px;
   height: 44px;

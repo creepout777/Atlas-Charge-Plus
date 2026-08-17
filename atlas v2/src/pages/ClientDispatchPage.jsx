@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import { Zap, Navigation, Clock, ShieldCheck, CheckCircle2, Star, Sparkles, MapPin, Gauge, Cpu, Phone, Truck, User, BatteryCharging, AlertCircle } from 'lucide-react';
+import { Zap, Navigation, Clock, ShieldCheck, CheckCircle2, Star, Sparkles, MapPin, Gauge, Cpu, Phone, Truck, User, BatteryCharging, AlertCircle, X, Radio, ArrowRight } from 'lucide-react';
 import { useOrder } from '../context/OrderContext';
 import { useData } from '../context/DataContext';
 import { useAuth } from '../context/AuthContext';
@@ -10,9 +10,21 @@ import Modal from '../components/layout/Modal';
 import SpeedometerGauge from '../components/telemetry/SpeedometerGauge';
 import StarRating from '../components/shared/StarRating';
 
+function calculateDistanceKm(lat1, lon1, lat2, lon2) {
+  const R = 6371;
+  const dLat = (lat2 - lat1) * (Math.PI / 180);
+  const dLon = (lon2 - lon1) * (Math.PI / 180);
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(lat1 * (Math.PI / 180)) * Math.cos(lat2 * (Math.PI / 180)) *
+    Math.sin(dLon / 2) * Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return parseFloat((R * c).toFixed(2));
+}
+
 export default function ClientDispatchPage() {
   const { currentUser } = useAuth();
-  const { ordersList, createOrder, updateStatus } = useOrder();
+  const { ordersList, createOrder, updateStatus, deleteOrder, telemetryLogs } = useOrder();
   const { vehicles, packages, connectors, trucks, drivers, tariffs, addReview } = useData();
 
   // Find this client's active order
@@ -49,12 +61,24 @@ export default function ClientDispatchPage() {
 
   // Assigned Truck & Driver info
   const assignedTruck = useMemo(() => {
-    return trucks.find(t => t.id === activeOrder?.assigned_truck_id) || trucks[0] || null;
+    if (activeOrder?.assigned_truck_id) {
+      return trucks.find(t => t.id === activeOrder.assigned_truck_id) || trucks[0] || null;
+    }
+    return trucks[0] || null;
   }, [trucks, activeOrder]);
 
   const assignedDriver = useMemo(() => {
-    return drivers.find(d => d.user_id === activeOrder?.assigned_driver_id) || drivers[0] || null;
+    if (activeOrder?.assigned_driver_id) {
+      return drivers.find(d => d.user_id === activeOrder.assigned_driver_id) || drivers[0] || null;
+    }
+    return drivers[0] || null;
   }, [drivers, activeOrder]);
+
+  // Live telemetry for active charging
+  const latestTelemetry = useMemo(() => {
+    if (!activeOrder) return null;
+    return telemetryLogs.find(t => t.order_id === activeOrder.id) || null;
+  }, [telemetryLogs, activeOrder]);
 
   // Initialize Map
   useEffect(() => {
@@ -100,14 +124,14 @@ export default function ClientDispatchPage() {
     if (!mapInstanceRef.current) return;
 
     if (activeOrder && activeOrder.status !== 'WAITING_APPROVAL' && activeOrder.status !== 'COMPLETED') {
-      const truckPos = [assignedTruck?.current_lat || assignedTruck?.base_lat || 51.5430, assignedTruck?.current_lng || assignedTruck?.base_lng || -0.0020];
+      const truckPos = [assignedTruck?.current_lat || 51.5430, assignedTruck?.current_lng || -0.0020];
       const clientPos = [activeOrder.target_lat || targetCoords[0], activeOrder.target_lng || targetCoords[1]];
 
       if (!truckMarkerRef.current) {
         const truckIcon = L.divIcon({
           className: 'custom-truck-icon',
           html: `
-            <div class="truck-heading-marker" title="${assignedTruck?.display_name || 'Mobile Unit'}">
+            <div class="truck-heading-marker" title="${assignedTruck?.display_name || 'Mobile Titan Unit'}">
               <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                 <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
               </svg>
@@ -125,15 +149,15 @@ export default function ClientDispatchPage() {
       if (!routeLineRef.current) {
         routeLineRef.current = L.polyline([truckPos, clientPos], {
           color: '#10b981',
-          weight: 4,
-          dashArray: '6, 8',
-          opacity: 0.85,
+          weight: 5,
+          dashArray: '8, 10',
+          opacity: 0.9,
         }).addTo(mapInstanceRef.current);
       } else {
         routeLineRef.current.setLatLngs([truckPos, clientPos]);
       }
 
-      mapInstanceRef.current.fitBounds([truckPos, clientPos], { padding: [60, 60] });
+      mapInstanceRef.current.fitBounds([truckPos, clientPos], { padding: [70, 70] });
     } else {
       if (truckMarkerRef.current) {
         truckMarkerRef.current.remove();
@@ -144,7 +168,7 @@ export default function ClientDispatchPage() {
         routeLineRef.current = null;
       }
     }
-  }, [activeOrder, assignedTruck]);
+  }, [activeOrder, assignedTruck?.current_lat, assignedTruck?.current_lng]);
 
   // Trigger Review modal on completion
   useEffect(() => {
@@ -185,6 +209,13 @@ export default function ClientDispatchPage() {
     }
   };
 
+  const handleCancelOrder = async () => {
+    if (!activeOrder) return;
+    if (window.confirm('Are you sure you want to cancel this rapid charging dispatch request?')) {
+      await deleteOrder(activeOrder.id);
+    }
+  };
+
   const handleReviewSubmit = async () => {
     const veh = vehicles.find(v => v.id === activeOrder?.vehicle_id) || vehicles[0];
     await addReview({
@@ -204,6 +235,16 @@ export default function ClientDispatchPage() {
     }, 1500);
   };
 
+  const distanceToClient = useMemo(() => {
+    if (!assignedTruck || !activeOrder) return '1.8';
+    return calculateDistanceKm(
+      assignedTruck.current_lat || 51.5430,
+      assignedTruck.current_lng || -0.0020,
+      activeOrder.target_lat || targetCoords[0],
+      activeOrder.target_lng || targetCoords[1]
+    );
+  }, [assignedTruck, activeOrder, targetCoords]);
+
   return (
     <div className="map-layout" style={{ position: 'relative', height: 'calc(100vh - 64px)', overflow: 'hidden' }}>
       {/* Leaflet Map Canvas */}
@@ -222,7 +263,7 @@ export default function ClientDispatchPage() {
                 </div>
               </div>
               <span className="brand-pill">
-                <Zap size={12} /> Est. ETA: 12 min
+                <Zap size={12} /> Est. ETA: 8-12 min
               </span>
             </div>
 
@@ -231,7 +272,7 @@ export default function ClientDispatchPage() {
               <label style={{ fontSize: '11px', fontWeight: 800, color: 'var(--slate-500)', display: 'block', marginBottom: '6px' }}>SELECT VEHICLE</label>
               {vehicles.length === 0 ? (
                 <div style={{ padding: '10px 12px', background: 'var(--slate-50)', borderRadius: 'var(--radius-sm)', fontSize: '12px', color: 'var(--text-secondary)' }}>
-                  Default EV Profile (Tesla Model 3)
+                  Default EV Profile (Tesla Model 3 / Y)
                 </div>
               ) : (
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
@@ -295,21 +336,43 @@ export default function ClientDispatchPage() {
                 </span>
                 <div style={{ fontWeight: 900, fontSize: '17px', marginTop: '4px' }}>{activeOrder.target_address}</div>
               </div>
-              <span className="brand-pill" style={{ fontFamily: 'var(--font-mono)' }}>
-                {activeOrder.order_reference || activeOrder.id?.slice(0, 8)}
-              </span>
+              <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                <span className="brand-pill" style={{ fontFamily: 'var(--font-mono)' }}>
+                  {activeOrder.order_reference || activeOrder.id?.slice(0, 8)}
+                </span>
+                {activeOrder.status === 'WAITING_APPROVAL' && (
+                  <button className="btn-outline" style={{ padding: '4px 8px', fontSize: '11px', color: '#dc2626' }} onClick={handleCancelOrder}>
+                    <X size={12} /> Cancel
+                  </button>
+                )}
+              </div>
             </div>
+
+            {/* WAITING_APPROVAL Radar HUD */}
+            {activeOrder.status === 'WAITING_APPROVAL' && (
+              <div style={{ background: 'linear-gradient(135deg, rgba(16,185,129,0.08), rgba(245,158,11,0.08))', border: '1px solid rgba(16,185,129,0.2)', padding: '16px', borderRadius: 'var(--radius-md)', textAlign: 'center', marginBottom: '14px' }}>
+                <div style={{ width: '48px', height: '48px', background: 'var(--emerald-light)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 10px', color: 'var(--emerald-darker)' }}>
+                  <Radio size={24} className="pulse" />
+                </div>
+                <div style={{ fontWeight: 800, fontSize: '15px' }}>Broadcasting to Mobile Titan Units</div>
+                <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '4px' }}>
+                  Nearby field technicians are reviewing your booking. Titan Unit will claim and start navigation shortly.
+                </div>
+              </div>
+            )}
 
             {/* Assigned Unit & Technician Info */}
             {activeOrder.status !== 'WAITING_APPROVAL' && (
               <div style={{ background: 'var(--slate-50)', padding: '12px 14px', borderRadius: 'var(--radius-md)', marginBottom: '14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-                  <div style={{ width: '38px', height: '38px', background: 'var(--emerald-light)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--emerald-darker)' }}>
-                    <Truck size={18} />
+                  <div style={{ width: '40px', height: '40px', background: 'var(--emerald-light)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--emerald-darker)' }}>
+                    <Truck size={20} />
                   </div>
                   <div>
                     <div style={{ fontWeight: 800, fontSize: '14px' }}>{assignedTruck?.display_name || 'Atlas Titan Mobile'} ({assignedTruck?.license_plate || 'EK24 EVX'})</div>
-                    <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>Tech: <b>{assignedDriver?.full_name || 'Field Technician'}</b></div>
+                    <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
+                      Tech: <b>{assignedDriver?.full_name || 'Marcus Webb'}</b> · {distanceToClient} km away
+                    </div>
                   </div>
                 </div>
                 <a href="tel:+447911999888" className="btn-outline" style={{ padding: '6px 10px', fontSize: '12px', display: 'flex', alignItems: 'center', gap: '4px' }}>
@@ -322,20 +385,20 @@ export default function ClientDispatchPage() {
             {activeOrder.status === 'CHARGING' && (
               <div>
                 <div style={{ display: 'flex', justifyContent: 'center', margin: '10px 0' }}>
-                  <SpeedometerGauge currentKw={150} maxKw={150} />
+                  <SpeedometerGauge currentKw={latestTelemetry?.current_output_kw || 149.4} maxKw={150} />
                 </div>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px', marginBottom: '14px' }}>
                   <div className="metric-card">
                     <div style={{ fontSize: '10px', color: 'var(--text-muted)' }}>DELIVERED</div>
-                    <div style={{ fontWeight: 900, fontSize: '16px', color: 'var(--emerald-dark)' }}>{activeOrder.actual_kwh_delivered || 14.5} kWh</div>
+                    <div style={{ fontWeight: 900, fontSize: '16px', color: 'var(--emerald-dark)' }}>{latestTelemetry?.energy_deliv_kwh || activeOrder.actual_kwh_delivered || '12.8'} kWh</div>
                   </div>
                   <div className="metric-card">
-                    <div style={{ fontSize: '10px', color: 'var(--text-muted)' }}>DC VOLTAGE</div>
-                    <div style={{ fontWeight: 900, fontSize: '16px', color: '#0284c7' }}>820 V</div>
+                    <div style={{ fontSize: '10px', color: 'var(--text-muted)' }}>BATTERY</div>
+                    <div style={{ fontWeight: 900, fontSize: '16px', color: '#0284c7' }}>{latestTelemetry?.vehicle_battery_pct || '48'}%</div>
                   </div>
                   <div className="metric-card">
-                    <div style={{ fontSize: '10px', color: 'var(--text-muted)' }}>RATE</div>
-                    <div style={{ fontWeight: 900, fontSize: '16px' }}>150 kW</div>
+                    <div style={{ fontSize: '10px', color: 'var(--text-muted)' }}>POWER</div>
+                    <div style={{ fontWeight: 900, fontSize: '16px' }}>{latestTelemetry?.current_output_kw || '149.4'} kW</div>
                   </div>
                 </div>
               </div>

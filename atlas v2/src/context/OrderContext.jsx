@@ -25,7 +25,12 @@ export function OrderProvider({ children }) {
   useEffect(() => {
     fetchOrders();
 
-    // Set up Realtime subscription
+    // 1. Set up 3-second heartbeat synchronization
+    const syncInterval = setInterval(() => {
+      fetchOrders();
+    }, 3000);
+
+    // 2. Set up Supabase Realtime subscription
     const channel = ordersService.subscribeToOrders(
       session?.user?.id,
       (newOrder) => {
@@ -37,6 +42,7 @@ export function OrderProvider({ children }) {
     );
 
     return () => {
+      clearInterval(syncInterval);
       channel?.unsubscribe();
     };
   }, [session, fetchOrders]);

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import { Truck, Navigation, Zap, CheckCircle2, AlertTriangle, Play, Square, BellRing, Gauge, Battery, Activity, Coffee, Power, Phone, User, Clock, ChevronRight } from 'lucide-react';
+import { Truck, Navigation, Zap, CheckCircle2, AlertTriangle, Play, Square, BellRing, Gauge, Battery, Activity, Coffee, Power, Phone, User, Clock, ChevronRight, MapPin, Compass, ShieldCheck } from 'lucide-react';
 import { useOrder } from '../context/OrderContext';
 import { useData } from '../context/DataContext';
 import { useAuth } from '../context/AuthContext';
@@ -16,6 +16,27 @@ const DUTY_STATUSES = [
   { value: 'DEPOT_RESTOCK', label: '📦 Depot Restock', color: '#f3e8ff', text: '#7e22ce' },
   { value: 'OFF_DUTY', label: '🔴 Off Duty', color: 'var(--slate-100)', text: 'var(--slate-600)' },
 ];
+
+function calculateDistanceKm(lat1, lon1, lat2, lon2) {
+  const R = 6371; // Earth radius in km
+  const dLat = (lat2 - lat1) * (Math.PI / 180);
+  const dLon = (lon2 - lon1) * (Math.PI / 180);
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(lat1 * (Math.PI / 180)) * Math.cos(lat2 * (Math.PI / 180)) *
+    Math.sin(dLon / 2) * Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return parseFloat((R * c).toFixed(2));
+}
+
+function calculateBearing(lat1, lon1, lat2, lon2) {
+  const y = Math.sin((lon2 - lon1) * (Math.PI / 180)) * Math.cos(lat2 * (Math.PI / 180));
+  const x =
+    Math.cos(lat1 * (Math.PI / 180)) * Math.sin(lat2 * (Math.PI / 180)) -
+    Math.sin(lat1 * (Math.PI / 180)) * Math.cos(lat2 * (Math.PI / 180)) * Math.cos((lon2 - lon1) * (Math.PI / 180));
+  const brng = Math.atan2(y, x) * (180 / Math.PI);
+  return Math.round((brng + 360) % 360);
+}
 
 export default function DriverCockpitPage() {
   const { currentUser } = useAuth();
@@ -34,13 +55,14 @@ export default function DriverCockpitPage() {
     return trucks[0] || null;
   }, [trucks, myDriverProfile]);
 
-  // Find driver's active job or incoming unassigned job from queue
+  // Find driver's active job
   const myActiveJob = useMemo(() => {
     return ordersList.find(o => o.assigned_driver_id === currentUser?.id && o.status !== 'COMPLETED' && o.status !== 'CANCELED') || null;
   }, [ordersList, currentUser]);
 
+  // Find open unassigned queue bookings
   const availableQueueJobs = useMemo(() => {
-    return ordersList.filter(o => !o.assigned_driver_id && (o.status === 'WAITING_APPROVAL' || o.status === 'PENDING_DISPATCH'));
+    return ordersList.filter(o => !o.assigned_driver_id && (o.status === 'WAITING_APPROVAL' || o.status === 'PENDING_DISPATCH' || o.status === 'PENDING'));
   }, [ordersList]);
 
   // Target job for modal alert (either assigned waiting job or first available pool job)
@@ -50,28 +72,40 @@ export default function DriverCockpitPage() {
   const [chargingKw, setChargingKw] = useState(0);
   const [deliveredKwh, setDeliveredKwh] = useState(0);
   const [batteryPct, setBatteryPct] = useState(24);
+  const [truckPos, setTruckPos] = useState([currentTruck?.current_lat || 51.5074, currentTruck?.current_lng || -0.1278]);
+  const [navDistanceKm, setNavDistanceKm] = useState(0);
+  const [navEtaMins, setNavEtaMins] = useState(0);
 
   const mapContainerRef = useRef(null);
   const mapInstanceRef = useRef(null);
   const truckMarkerRef = useRef(null);
   const clientMarkerRef = useRef(null);
+  const queueMarkersRef = useRef({});
   const routeLineRef = useRef(null);
   const simTimerRef = useRef(null);
+  const navGpsTimerRef = useRef(null);
 
-  // Play chime and show modal when a job arrives
+  // Synchronize initial truck coordinates
+  useEffect(() => {
+    if (currentTruck?.current_lat && currentTruck?.current_lng) {
+      setTruckPos([currentTruck.current_lat, currentTruck.current_lng]);
+    }
+  }, [currentTruck?.current_lat, currentTruck?.current_lng]);
+
+  // Play chime and show modal when a new unassigned job arrives
   useEffect(() => {
     if (incomingJob && !myActiveJob?.status?.includes('EN_ROUTE') && !myActiveJob?.status?.includes('CHARGING')) {
       setShowIncomingModal(true);
       playDispatchChime();
     }
-  }, [incomingJob, myActiveJob]);
+  }, [incomingJob?.id]);
 
-  // Initialize Map
+  // 1. Initialize Map
   useEffect(() => {
     if (!mapContainerRef.current || mapInstanceRef.current) return;
 
-    const initialLat = currentTruck?.current_lat || currentTruck?.base_lat || 51.5074;
-    const initialLng = currentTruck?.current_lng || currentTruck?.base_lng || -0.1278;
+    const initialLat = truckPos[0] || 51.5074;
+    const initialLng = truckPos[1] || -0.1278;
 
     const map = L.map(mapContainerRef.current, {
       center: [initialLat, initialLng],
@@ -88,7 +122,7 @@ export default function DriverCockpitPage() {
     const truckIcon = L.divIcon({
       className: 'custom-truck-icon',
       html: `
-        <div class="truck-heading-marker">
+        <div class="truck-heading-marker" id="driver-truck-marker">
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
             <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
           </svg>
@@ -103,21 +137,103 @@ export default function DriverCockpitPage() {
       map.remove();
       mapInstanceRef.current = null;
     };
-  }, [currentTruck]);
+  }, []);
 
-  // Update Route and Destination Pin when Active Job changes
+  // 2. Render Available Queue Job Markers (Amber Pulsing Pins with Interactive Popups)
+  useEffect(() => {
+    if (!mapInstanceRef.current) return;
+
+    // Clear old queue markers no longer available
+    Object.keys(queueMarkersRef.current).forEach(id => {
+      if (!availableQueueJobs.find(j => j.id === id) || (myActiveJob && myActiveJob.id === id)) {
+        queueMarkersRef.current[id]?.remove();
+        delete queueMarkersRef.current[id];
+      }
+    });
+
+    // If driver already has an active job, hide other queue pins to focus on navigation
+    if (myActiveJob) {
+      Object.keys(queueMarkersRef.current).forEach(id => {
+        queueMarkersRef.current[id]?.remove();
+        delete queueMarkersRef.current[id];
+      });
+      return;
+    }
+
+    availableQueueJobs.forEach(job => {
+      const lat = job.target_lat || 51.5014;
+      const lng = job.target_lng || -0.1918;
+
+      if (!queueMarkersRef.current[job.id]) {
+        const queueIcon = L.divIcon({
+          className: 'custom-queue-icon',
+          html: `<div class="pending-job-pulse-marker" title="Open Job: ${job.target_address}"></div>`,
+          iconSize: [24, 24],
+          iconAnchor: [12, 12],
+        });
+
+        const marker = L.marker([lat, lng], { icon: queueIcon }).addTo(mapInstanceRef.current);
+
+        const popupContent = `
+          <div style="font-family: Inter, system-ui, sans-serif; min-width: 220px; padding: 4px;">
+            <div style="display: flex; align-items: center; gap: 6px; margin-bottom: 4px;">
+              <span style="background: #fef3c7; color: #b45309; font-weight: 800; font-size: 10px; padding: 2px 6px; border-radius: 4px;">OPEN DISPATCH</span>
+              <span style="font-size: 11px; font-weight: 700; color: #64748b;">${job.order_reference || job.id?.slice(0, 8)}</span>
+            </div>
+            <div style="font-weight: 800; font-size: 13px; color: #0f172a; margin-bottom: 6px;">${job.target_address || 'London Central'}</div>
+            <div style="display: flex; justify-content: space-between; font-size: 12px; font-weight: 800; background: #f8fafc; padding: 6px 8px; border-radius: 6px; margin-bottom: 10px;">
+              <span>⚡ ${job.target_kwh || 35} kWh (150kW DC)</span>
+              <span style="color: #10b981;">£${job.estimated_total_amount || '17.25'}</span>
+            </div>
+            <button id="btn-claim-${job.id}" style="width: 100%; background: #10b981; color: #fff; font-weight: 800; font-size: 12px; padding: 8px 12px; border: none; border-radius: 6px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px;">
+              ⚡ Claim Job & Navigate
+            </button>
+          </div>
+        `;
+
+        marker.bindPopup(popupContent);
+        marker.on('popupopen', () => {
+          const btn = document.getElementById(`btn-claim-${job.id}`);
+          if (btn) {
+            btn.onclick = () => {
+              handleAcceptOrClaimSpecificJob(job);
+            };
+          }
+        });
+
+        queueMarkersRef.current[job.id] = marker;
+      } else {
+        queueMarkersRef.current[job.id].setLatLng([lat, lng]);
+      }
+    });
+
+    // If we have available jobs and no active job, fit bounds to show all
+    if (availableQueueJobs.length > 0 && !myActiveJob) {
+      const allPoints = [
+        truckPos,
+        ...availableQueueJobs.map(j => [j.target_lat || 51.5014, j.target_lng || -0.1918]),
+      ];
+      mapInstanceRef.current.fitBounds(allPoints, { padding: [60, 60], maxZoom: 15 });
+    }
+  }, [availableQueueJobs, myActiveJob, truckPos]);
+
+  // 3. Render Active Assigned Job (Neon Emerald Marker & Navigation Route)
   useEffect(() => {
     if (!mapInstanceRef.current) return;
 
     if (myActiveJob && myActiveJob.target_lat && myActiveJob.target_lng) {
       const clientPos = [myActiveJob.target_lat, myActiveJob.target_lng];
-      const truckPos = [currentTruck?.current_lat || 51.5074, currentTruck?.current_lng || -0.1278];
+
+      // Calculate real distance & ETA
+      const dist = calculateDistanceKm(truckPos[0], truckPos[1], clientPos[0], clientPos[1]);
+      setNavDistanceKm(dist);
+      setNavEtaMins(Math.max(1, Math.round(dist * 2.5)));
 
       // Render client destination marker
       if (!clientMarkerRef.current) {
         const clientIcon = L.divIcon({
           className: 'custom-client-icon',
-          html: '<div class="client-pulse-marker"></div>',
+          html: `<div class="client-pulse-marker" title="Client Destination: ${myActiveJob.target_address}"></div>`,
           iconSize: [24, 24],
           iconAnchor: [12, 12],
         });
@@ -126,19 +242,19 @@ export default function DriverCockpitPage() {
         clientMarkerRef.current.setLatLng(clientPos);
       }
 
-      // Draw dashed dispatch route line
+      // Draw high-visibility dashed dispatch route line
       if (!routeLineRef.current) {
         routeLineRef.current = L.polyline([truckPos, clientPos], {
           color: '#10b981',
-          weight: 4,
-          dashArray: '6, 8',
-          opacity: 0.85,
+          weight: 5,
+          dashArray: '8, 10',
+          opacity: 0.9,
         }).addTo(mapInstanceRef.current);
       } else {
         routeLineRef.current.setLatLngs([truckPos, clientPos]);
       }
 
-      mapInstanceRef.current.fitBounds([truckPos, clientPos], { padding: [60, 60] });
+      mapInstanceRef.current.fitBounds([truckPos, clientPos], { padding: [70, 70] });
     } else {
       if (clientMarkerRef.current) {
         clientMarkerRef.current.remove();
@@ -149,9 +265,52 @@ export default function DriverCockpitPage() {
         routeLineRef.current = null;
       }
     }
-  }, [myActiveJob, currentTruck]);
+  }, [myActiveJob, truckPos]);
 
-  // 150kW DC Charging session simulator
+  // 4. Live GPS Navigation Simulator (Interpolates truck position towards client when EN_ROUTE)
+  useEffect(() => {
+    if (myActiveJob && myActiveJob.status === 'EN_ROUTE' && myActiveJob.target_lat && myActiveJob.target_lng) {
+      navGpsTimerRef.current = setInterval(() => {
+        setTruckPos(prev => {
+          const targetLat = myActiveJob.target_lat;
+          const targetLng = myActiveJob.target_lng;
+
+          // Step 8% closer to client each tick
+          const deltaLat = targetLat - prev[0];
+          const deltaLng = targetLng - prev[1];
+          const stepRatio = 0.08;
+
+          const nextLat = parseFloat((prev[0] + deltaLat * stepRatio).toFixed(6));
+          const nextLng = parseFloat((prev[1] + deltaLng * stepRatio).toFixed(6));
+
+          // Calculate heading bearing
+          const bearing = calculateBearing(prev[0], prev[1], targetLat, targetLng);
+
+          // Update Leaflet marker
+          if (truckMarkerRef.current) {
+            truckMarkerRef.current.setLatLng([nextLat, nextLng]);
+            const elem = document.getElementById('driver-truck-marker');
+            if (elem) {
+              elem.style.transform = `rotate(${bearing}deg)`;
+            }
+          }
+
+          // Broadcast GPS to Supabase database so client & dispatcher see smooth movement
+          if (currentTruck?.id) {
+            broadcastGps(currentTruck.id, nextLat, nextLng, bearing);
+          }
+
+          return [nextLat, nextLng];
+        });
+      }, 1500);
+    } else {
+      clearInterval(navGpsTimerRef.current);
+    }
+
+    return () => clearInterval(navGpsTimerRef.current);
+  }, [myActiveJob?.status, myActiveJob?.target_lat, myActiveJob?.target_lng, currentTruck?.id]);
+
+  // 5. 150kW DC Charging Telemetry Simulator
   useEffect(() => {
     if (myActiveJob && myActiveJob.status === 'CHARGING') {
       const targetKw = currentTruck?.max_output_kw || 150;
@@ -159,7 +318,7 @@ export default function DriverCockpitPage() {
 
       simTimerRef.current = setInterval(() => {
         setDeliveredKwh(prev => {
-          const next = parseFloat((prev + 0.35).toFixed(2));
+          const next = parseFloat((prev + 0.42).toFixed(2));
           logTelemetry({
             order_id: myActiveJob.id,
             recorded_at: new Date().toISOString(),
@@ -178,13 +337,13 @@ export default function DriverCockpitPage() {
     }
 
     return () => clearInterval(simTimerRef.current);
-  }, [myActiveJob, currentTruck]);
+  }, [myActiveJob?.status, currentTruck]);
 
   // Actions
-  const handleAcceptOrClaimJob = async () => {
-    if (!incomingJob) return;
+  const handleAcceptOrClaimSpecificJob = async (job) => {
+    if (!job) return;
     try {
-      await claimOrder(incomingJob.id, currentUser?.id || myDriverProfile?.user_id, currentTruck?.id);
+      await claimOrder(job.id, currentUser?.id || myDriverProfile?.user_id, currentTruck?.id);
       if (myDriverProfile) {
         await updateDriver(myDriverProfile.user_id, { duty_status: 'EN_ROUTE', is_on_duty: true });
       }
@@ -193,7 +352,7 @@ export default function DriverCockpitPage() {
       }
       setShowIncomingModal(false);
     } catch (e) {
-      console.error('Accept job error:', e);
+      console.error('Claim job error:', e);
     }
   };
 
@@ -279,7 +438,7 @@ export default function DriverCockpitPage() {
       {/* Leaflet Map Canvas */}
       <div ref={mapContainerRef} style={{ width: '100%', height: '100%' }} />
 
-      {/* Top Telemetry HUD */}
+      {/* Top Telemetry & Duty HUD */}
       <div style={{
         position: 'absolute',
         top: '16px',
@@ -297,8 +456,8 @@ export default function DriverCockpitPage() {
         boxShadow: '0 8px 32px rgba(0,0,0,0.3)',
       }}>
         <div style={{ display: 'flex', gap: '14px', alignItems: 'center' }}>
-          <div style={{ width: '40px', height: '40px', background: 'var(--emerald-primary)', borderRadius: 'var(--radius-sm)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <Truck size={20} color="#fff" />
+          <div style={{ width: '42px', height: '42px', background: 'var(--emerald-primary)', borderRadius: 'var(--radius-sm)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <Truck size={22} color="#fff" />
           </div>
           <div>
             <div style={{ fontWeight: 800, fontSize: '15px' }}>{currentTruck?.display_name || 'Atlas Titan Mobile'}</div>
@@ -335,11 +494,52 @@ export default function DriverCockpitPage() {
           <div style={{ textAlign: 'right' }}>
             <div style={{ fontSize: '10px', color: 'var(--slate-400)' }}>BUFFER BATTERY</div>
             <div style={{ fontWeight: 900, fontFamily: 'var(--font-mono)', fontSize: '15px', color: '#10b981' }}>
-              {currentTruck?.current_stored_kwh} / {currentTruck?.battery_capacity_kwh} kWh
+              {currentTruck?.current_stored_kwh || 160} / {currentTruck?.battery_capacity_kwh || 200} kWh
             </div>
           </div>
         </div>
       </div>
+
+      {/* Floating Active Navigation HUD (When EN_ROUTE) */}
+      {myActiveJob && myActiveJob.status === 'EN_ROUTE' && (
+        <div style={{
+          position: 'absolute',
+          top: '90px',
+          left: '16px',
+          right: '16px',
+          zIndex: 490,
+          background: 'linear-gradient(135deg, #0f172a, #1e293b)',
+          border: '1px solid rgba(16, 185, 129, 0.4)',
+          borderRadius: 'var(--radius-md)',
+          padding: '12px 18px',
+          color: '#fff',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          boxShadow: '0 8px 24px rgba(0,0,0,0.3)',
+        }}>
+          <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+            <div style={{ width: '36px', height: '36px', background: 'rgba(16, 185, 129, 0.2)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#10b981' }}>
+              <Navigation size={18} />
+            </div>
+            <div>
+              <div style={{ fontSize: '11px', color: '#10b981', fontWeight: 800 }}>LIVE GPS NAVIGATION ACTIVE</div>
+              <div style={{ fontWeight: 800, fontSize: '14px' }}>{myActiveJob.target_address || 'London Central'}</div>
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', gap: '14px', alignItems: 'center' }}>
+            <div className="metric-card" style={{ background: 'rgba(255,255,255,0.06)', border: 'none', padding: '6px 12px', textAlign: 'center' }}>
+              <div style={{ fontSize: '10px', color: 'var(--slate-400)' }}>DISTANCE</div>
+              <div style={{ fontWeight: 900, color: '#fff', fontSize: '14px' }}>{navDistanceKm} km</div>
+            </div>
+            <div className="metric-card" style={{ background: 'rgba(255,255,255,0.06)', border: 'none', padding: '6px 12px', textAlign: 'center' }}>
+              <div style={{ fontSize: '10px', color: 'var(--slate-400)' }}>EST. ETA</div>
+              <div style={{ fontWeight: 900, color: '#10b981', fontSize: '14px' }}>{navEtaMins} mins</div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Driver Cockpit Bottom Drawer */}
       <MobileSheet>
@@ -347,18 +547,45 @@ export default function DriverCockpitPage() {
           <div style={{ textAlign: 'center', padding: '24px 0', color: 'var(--text-secondary)' }}>
             <Activity size={36} style={{ margin: '0 auto 10px', color: 'var(--emerald-primary)' }} />
             <div style={{ fontWeight: 800, fontSize: '17px', color: 'var(--slate-900)' }}>Field Cockpit Standing By</div>
-            <div style={{ fontSize: '13px', marginTop: '4px', maxWidth: '340px', margin: '4px auto 14px' }}>
-              GPS beacon live. Ready to receive high-power mobile DC rapid charging jobs.
+            <div style={{ fontSize: '13px', marginTop: '4px', maxWidth: '360px', margin: '4px auto 14px' }}>
+              GPS beacon live. Ready to receive high-power mobile DC rapid charging jobs across London.
             </div>
 
             {availableQueueJobs.length > 0 && (
-              <button
-                className="btn-emerald"
-                style={{ width: 'auto', margin: '0 auto', fontSize: '13px', padding: '8px 20px' }}
-                onClick={() => setShowIncomingModal(true)}
-              >
-                <BellRing size={15} /> {availableQueueJobs.length} Unassigned Booking Available — Claim Job
-              </button>
+              <div style={{ marginTop: '10px' }}>
+                <div style={{ fontSize: '12px', fontWeight: 800, color: '#b45309', marginBottom: '8px' }}>
+                  🟡 {availableQueueJobs.length} Pending Booking Pin(s) Visible On Map:
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxWidth: '400px', margin: '0 auto' }}>
+                  {availableQueueJobs.map(job => (
+                    <div
+                      key={job.id}
+                      style={{
+                        background: '#f8fafc',
+                        border: '1px solid var(--border-subtle)',
+                        borderRadius: 'var(--radius-sm)',
+                        padding: '10px 14px',
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        textAlign: 'left',
+                      }}
+                    >
+                      <div>
+                        <div style={{ fontWeight: 800, fontSize: '13px', color: 'var(--slate-900)' }}>{job.target_address || 'London Central'}</div>
+                        <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>{job.target_kwh || 35} kWh · £{job.estimated_total_amount || '17.25'}</div>
+                      </div>
+                      <button
+                        className="btn-emerald"
+                        style={{ width: 'auto', padding: '6px 12px', fontSize: '12px' }}
+                        onClick={() => handleAcceptOrClaimSpecificJob(job)}
+                      >
+                        Claim Job
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
             )}
           </div>
         ) : (
@@ -459,7 +686,7 @@ export default function DriverCockpitPage() {
               </div>
             </div>
 
-            <button className="btn-emerald" style={{ fontSize: '15px', padding: '12px 0' }} onClick={handleAcceptOrClaimJob}>
+            <button className="btn-emerald" style={{ fontSize: '15px', padding: '12px 0' }} onClick={() => handleAcceptOrClaimSpecificJob(incomingJob)}>
               <CheckCircle2 size={18} /> Accept & Start Navigation (EN ROUTE)
             </button>
           </div>

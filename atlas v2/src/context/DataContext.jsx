@@ -137,7 +137,14 @@ export function DataProvider({ children }) {
     }
 
     loadAllCatalogs();
-  }, [session]);
+
+    const fleetInterval = setInterval(() => {
+      refetchTrucks();
+      refetchDrivers();
+    }, 4000);
+
+    return () => clearInterval(fleetInterval);
+  }, [session, refetchTrucks, refetchDrivers]);
 
   // ── Fetch User-Scoped Protected Data ───────────────────────────
   useEffect(() => {

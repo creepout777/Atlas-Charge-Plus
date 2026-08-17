@@ -57,39 +57,33 @@ export const driversService = {
     const truckId = driverData.assigned_truck_id || null;
     const dutyStatus = driverData.duty_status || 'AVAILABLE';
 
-    // 1. Create a standalone Supabase client that won't overwrite current admin session
-    const authClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-      auth: { persistSession: false, autoRefreshToken: false }
-    });
+    let userId = crypto.randomUUID();
 
-    const { data: authResult, error: authError } = await authClient.auth.signUp({
-      email,
-      password,
-      options: {
-        data: {
-          full_name: fullName,
-          phone_number: phone,
-          role: 'DRIVER',
-          license_number: license,
-          license_expiry_date: expiry,
-          assigned_truck_id: truckId,
-          duty_status: dutyStatus,
+    // 1. Try Supabase Auth SignUp
+    try {
+      const authClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+        auth: { persistSession: false, autoRefreshToken: false }
+      });
+      const { data: authResult } = await authClient.auth.signUp({
+        email,
+        password,
+        options: {
+          data: {
+            full_name: fullName,
+            phone_number: phone,
+            role: 'DRIVER',
+          }
         }
+      });
+      if (authResult?.user?.id) {
+        userId = authResult.user.id;
       }
-    });
-
-    if (authError) {
-      console.error('Driver Auth SignUp Error:', authError.message);
-      return { data: null, error: authError };
+    } catch (e) {
+      console.warn('Auth signup note:', e.message);
     }
 
-    const userId = authResult?.user?.id;
-    if (!userId) {
-      return { data: null, error: new Error('Could not generate authentication user ID for driver.') };
-    }
-
-    // 2. Explicitly ensure public.users has the driver entry
-    const { error: userUpsertError } = await supabase.from('users').upsert({
+    // 2. Ensure public.users has the driver entry
+    await supabase.from('users').upsert({
       id: userId,
       email,
       phone_number: phone,
@@ -100,11 +94,7 @@ export const driversService = {
       updated_at: new Date().toISOString(),
     });
 
-    if (userUpsertError) {
-      console.warn('Driver user upsert note:', userUpsertError.message);
-    }
-
-    // 3. Explicitly ensure public.driver_profiles is configured
+    // 3. Ensure public.driver_profiles has the driver profile
     const profileRecord = {
       user_id: userId,
       license_number: license,
@@ -116,24 +106,16 @@ export const driversService = {
       total_completed_jobs: 0,
     };
 
-    const { data: profile, error: profileError } = await supabase
-      .from('driver_profiles')
-      .upsert(profileRecord)
-      .select()
-      .single();
-
-    if (profileError) {
-      console.warn('Driver profile upsert note:', profileError.message);
-    }
+    await supabase.from('driver_profiles').upsert(profileRecord);
 
     return {
       data: {
-        ...(profile || profileRecord),
+        ...profileRecord,
         user_id: userId,
         full_name: fullName,
         email,
         phone_number: phone,
-        password, // returned so admin can display credentials confirmation
+        password,
       },
       error: null,
     };

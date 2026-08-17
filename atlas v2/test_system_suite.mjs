@@ -73,7 +73,7 @@ async function runFullSystemDiagnostics() {
     recordResult('Auth & Roles', 'Client Authentication (Alex Morgan)', !cErr && !!clientUser, `User ID: ${clientUser?.id?.slice(0, 8)}`);
 
     const { data: dData, error: dErr } = await driverAuth.auth.signInWithPassword({
-      email: 'marcus.webb.242@atlascharge.com',
+      email: 'driver@atlascharge.com',
       password: 'Password123!',
     });
     driverUser = dData?.user;

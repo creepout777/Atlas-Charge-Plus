@@ -335,45 +335,25 @@ export default function ClientDispatchPage() {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
               <div>
                 <span className="brand-pill" style={{ background: 'var(--emerald-light)', color: 'var(--emerald-darker)', fontWeight: 800 }}>
-                  ● {activeOrder.status === 'WAITING_APPROVAL' ? 'Pairing Mobile Titan...' : activeOrder.status === 'EN_ROUTE' ? 'Technician En Route' : activeOrder.status === 'ARRIVED' ? 'Mobile Unit Arrived Outside' : '⚡ 150kW DC Fast Charging Active'}
+                  ● {activeOrder.status === 'WAITING_APPROVAL' ? 'Pairing Mobile Titan...' : activeOrder.status === 'EN_ROUTE' ? 'Technician En Route' : activeOrder.status === 'ARRIVED' ? 'Mobile Unit Arrived Outside' : '⚡ Charging Active'}
                 </span>
                 <div style={{ fontWeight: 900, fontSize: '17px', marginTop: '4px' }}>{activeOrder.target_address}</div>
               </div>
-              <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
-                <span className="brand-pill" style={{ fontFamily: 'var(--font-mono)' }}>
-                  {activeOrder.order_reference || activeOrder.id?.slice(0, 8)}
-                </span>
-                {(activeOrder.status === 'WAITING_APPROVAL' || activeOrder.status === 'PENDING') && (
-                  <button
-                    type="button"
-                    className="btn-outline"
-                    style={{ padding: '4px 10px', fontSize: '12px', color: '#dc2626', borderColor: '#fca5a5', background: '#fef2f2', fontWeight: 800, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}
-                    onClick={handleCancelOrder}
-                  >
-                    <X size={13} /> Cancel
-                  </button>
-                )}
-              </div>
+              <span className="brand-pill" style={{ fontFamily: 'var(--font-mono)' }}>
+                {activeOrder.order_reference || activeOrder.id?.slice(0, 8)}
+              </span>
             </div>
 
             {/* WAITING_APPROVAL Radar HUD */}
             {activeOrder.status === 'WAITING_APPROVAL' && (
-              <div style={{ background: 'linear-gradient(135deg, rgba(16,185,129,0.08), rgba(245,158,11,0.08))', border: '1px solid rgba(16,185,129,0.2)', padding: '16px', borderRadius: 'var(--radius-md)', textAlign: 'center', marginBottom: '14px' }}>
+              <div style={{ background: 'linear-gradient(135deg, rgba(16,185,129,0.08), rgba(245,158,11,0.08))', border: '1px solid rgba(16,185,129,0.2)', padding: '16px', borderRadius: 'var(--radius-md)', textAlign: 'center', marginBottom: '10px' }}>
                 <div style={{ width: '48px', height: '48px', background: 'var(--emerald-light)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 10px', color: 'var(--emerald-darker)' }}>
                   <Radio size={24} className="pulse" />
                 </div>
                 <div style={{ fontWeight: 800, fontSize: '15px' }}>Broadcasting to Mobile Titan Units</div>
-                <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '4px', marginBottom: '12px' }}>
+                <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '4px' }}>
                   Nearby field technicians are reviewing your booking. Titan Unit will claim and start navigation shortly.
                 </div>
-                <button
-                  type="button"
-                  className="btn-outline"
-                  style={{ width: 'auto', padding: '6px 14px', fontSize: '12px', color: '#dc2626', borderColor: '#fca5a5', background: '#fff', fontWeight: 800, margin: '0 auto', display: 'inline-flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}
-                  onClick={handleCancelOrder}
-                >
-                  <X size={14} /> Cancel Dispatch Request
-                </button>
               </div>
             )}
 
@@ -397,28 +377,29 @@ export default function ClientDispatchPage() {
               </div>
             )}
 
-            {/* Charging In Progress Card */}
+            {/* Charging In Progress Card: Ultra-Simple Reassurance */}
             {activeOrder.status === 'CHARGING' && (
-              <div style={{ background: 'linear-gradient(135deg, rgba(16,185,129,0.1), rgba(6,182,212,0.08))', border: '1px solid rgba(16,185,129,0.3)', padding: '16px', borderRadius: 'var(--radius-md)', textAlign: 'center', marginBottom: '10px' }}>
-                <div style={{ width: '44px', height: '44px', background: 'var(--emerald-light)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 10px', color: 'var(--emerald-darker)' }}>
-                  <Zap size={24} className="pulse" />
+              <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', padding: '24px 16px', borderRadius: 'var(--radius-md)', textAlign: 'center', margin: '10px 0' }}>
+                <div style={{ width: '52px', height: '52px', background: '#dcfce7', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 12px', color: '#15803d' }}>
+                  <Zap size={28} className="pulse" />
                 </div>
-                <div style={{ fontWeight: 900, fontSize: '16px', color: 'var(--slate-900)' }}>⚡ High-Power 150kW DC Charging Active</div>
-                <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '4px', marginBottom: '12px' }}>
-                  Technician is dispensing {activeOrder.target_kwh || 35} kWh directly into your EV battery.
-                </div>
-
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-                  <div className="metric-card">
-                    <div style={{ fontSize: '10px', color: 'var(--text-muted)' }}>TARGET ENERGY</div>
-                    <div style={{ fontWeight: 900, fontSize: '16px', color: 'var(--emerald-dark)' }}>{activeOrder.target_kwh || 35} kWh</div>
-                  </div>
-                  <div className="metric-card">
-                    <div style={{ fontSize: '10px', color: 'var(--text-muted)' }}>TOTAL ESTIMATED</div>
-                    <div style={{ fontWeight: 900, fontSize: '16px', color: 'var(--slate-900)' }}>£{activeOrder.estimated_total_amount || '17.25'}</div>
-                  </div>
+                <div style={{ fontWeight: 900, fontSize: '18px', color: '#14532d' }}>Your Vehicle is Being Charged</div>
+                <div style={{ fontSize: '13px', color: '#166534', marginTop: '6px' }}>
+                  Mobile Unit is actively dispensing energy to your vehicle.
                 </div>
               </div>
+            )}
+
+            {/* SINGLE, CLEAR Cancel Dispatch Request Button (Only when not actively charging) */}
+            {activeOrder.status !== 'CHARGING' && (
+              <button
+                type="button"
+                className="btn-outline"
+                style={{ width: '100%', padding: '10px 0', fontSize: '13px', color: '#dc2626', borderColor: '#fca5a5', background: '#fff', fontWeight: 800, marginTop: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', cursor: 'pointer' }}
+                onClick={handleCancelOrder}
+              >
+                <X size={15} /> Cancel Dispatch Request
+              </button>
             )}
           </div>
         ) : (

@@ -8,7 +8,7 @@ const DEMO_PASSWORD = 'Password123!';
 
 const ROLE_EMAIL_MAP = {
   CLIENT: 'alex.morgan@email.com',
-  DRIVER: 'marcus.webb.548@atlascharge.com',
+  DRIVER: 'driver@atlascharge.com',
   FLEET_DISPATCHER: 'dispatcher@atlascharge.com',
   SUPER_ADMIN: 'admin@atlascharge.com',
 };

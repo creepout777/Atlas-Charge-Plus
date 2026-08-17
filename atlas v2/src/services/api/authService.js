@@ -24,6 +24,7 @@ export const authService = {
       email,
       password,
       options: {
+        emailRedirectTo: options.emailRedirectTo || `${window.location.origin}/`,
         captchaToken: options.captchaToken,
         data: {
           full_name: fullName,

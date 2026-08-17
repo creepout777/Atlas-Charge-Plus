@@ -54,9 +54,18 @@ export const ordersService = {
   },
 
   async logTelemetry(logData) {
+    const record = {
+      order_id: logData.order_id,
+      current_output_kw: parseFloat(logData.current_output_kw) || 150,
+      energy_deliv_kwh: parseFloat(logData.energy_deliv_kwh) || 0,
+      vehicle_battery_pct: parseFloat(logData.battery_pct || logData.vehicle_battery_pct) || 25,
+      voltage_volts: parseFloat(logData.voltage_volts) || 820,
+      charging_amps: parseFloat(logData.charging_amps) || 180,
+      recorded_at: logData.recorded_at || new Date().toISOString(),
+    };
     return await supabase
       .from('order_telemetry_logs')
-      .insert([logData]);
+      .insert([record]);
   },
 
   async broadcastGps(breadcrumb) {

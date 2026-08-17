@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Zap, MapPin, Clock, Shield, Truck, BatteryCharging, Star, ArrowRight, Sparkles, ChevronDown, Users, Globe, Gauge } from 'lucide-react';
 import GreenElectroCanvas from '../components/shared/GreenElectroCanvas';
+import { useData } from '../context/DataContext.jsx';
 
 /* ── Intersection Observer for scroll-triggered reveals ── */
 function useScrollReveal() {
@@ -101,6 +102,8 @@ function RotatingText({ phrases, interval = 3000 }) {
 
 export default function HomePage() {
   const navigate = useNavigate();
+  const { reviews } = useData();
+  const [scrollProgress, setScrollProgress] = useState(0);
   const whiteAreaRef = useRef(null);
 
   // Auto-rotating hero images
@@ -550,19 +553,19 @@ export default function HomePage() {
             </div>
           </Reveal>
           <div className="testimonials-grid">
-            {[
-              { name: 'Sarah K.', car: 'Tesla Model 3', text: 'Marcus arrived in 8 minutes and gave my Model 3 a 35 kWh boost right on my driveway. I didn\'t even have to leave the house.', rating: 5 },
-              { name: 'James W.', car: 'Porsche Taycan', text: 'Stuck at 4% on the A40. Atlas dispatched a truck in under 12 minutes. The 150 kW speed was genuinely impressive.', rating: 5 },
-              { name: 'Priya M.', car: 'BMW iX', text: 'Transparent pricing sealed the deal — £5 callout and £0.35/kWh. I\'ve cancelled my public charging subscription entirely.', rating: 5 },
-            ].map((t, i) => (
-              <Reveal key={i} delay={i * 120} className="testimonial-card">
+            {(reviews && reviews.length > 0 ? reviews.slice(0, 3) : [
+              { author_name: 'Sarah K.', vehicle_model: 'Tesla Model 3', comment: 'Marcus arrived in 8 minutes and gave my Model 3 a 35 kWh boost right on my driveway. I didn\'t even have to leave the house.', rating_stars: 5 },
+              { author_name: 'James W.', vehicle_model: 'Porsche Taycan', comment: 'Stuck at 4% on the A40. Atlas dispatched a truck in under 12 minutes. The 150 kW speed was genuinely impressive.', rating_stars: 5 },
+              { author_name: 'Priya M.', vehicle_model: 'BMW iX', comment: 'Transparent pricing sealed the deal — £5 callout and £0.35/kWh. I\'ve cancelled my public charging subscription entirely.', rating_stars: 5 },
+            ]).map((t, i) => (
+              <Reveal key={t.id || i} delay={i * 120} className="testimonial-card">
                 <div className="testimonial-stars">
-                  {Array.from({ length: t.rating }).map((_, s) => <Star key={s} size={14} fill="var(--amber-primary)" color="var(--amber-primary)" />)}
+                  {Array.from({ length: t.rating_stars || 5 }).map((_, s) => <Star key={s} size={14} fill="var(--amber-primary)" color="var(--amber-primary)" />)}
                 </div>
-                <p className="testimonial-text">"{t.text}"</p>
+                <p className="testimonial-text">"{t.comment || t.text}"</p>
                 <div className="testimonial-author">
-                  <span className="testimonial-name">{t.name}</span>
-                  <span className="testimonial-car">{t.car}</span>
+                  <span className="testimonial-name">{t.author_name || t.name || 'Verified EV Driver'}</span>
+                  <span className="testimonial-car">{t.vehicle_model || t.car || 'London EV'}</span>
                 </div>
               </Reveal>
             ))}

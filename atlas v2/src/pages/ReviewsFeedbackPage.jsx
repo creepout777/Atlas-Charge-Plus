@@ -62,10 +62,10 @@ export default function ReviewsFeedbackPage() {
       await addReview({
         rating_stars: ratingStars,
         comment: comment.trim(),
-        feedback_tags: selectedTags.join(','),
-        client_user_id: currentUser?.id,
+        author_name: currentUser?.full_name || 'Verified EV Client',
+        vehicle_model: 'London EV',
       });
-      setFeedbackMsg('Review successfully saved to PostgreSQL (order_reviews)!');
+      setFeedbackMsg('Review successfully submitted! Thank you for your feedback.');
       setTimeout(() => {
         setShowReviewModal(false);
         setFeedbackMsg('');
@@ -83,7 +83,7 @@ export default function ReviewsFeedbackPage() {
         <div>
           <h1 style={{ fontSize: '24px', fontWeight: 900 }}>Customer Reviews & Quality Ratings</h1>
           <div style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>
-            Live feedback pulled directly from PostgreSQL (<code>order_reviews</code>)
+            Verified reviews from completed mobile charging sessions
           </div>
         </div>
         {canWriteReview && (
@@ -133,7 +133,10 @@ export default function ReviewsFeedbackPage() {
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                   <StarRating rating={r.rating_stars || 5} size={16} />
-                  <span style={{ fontWeight: 800, fontSize: '14px' }}>Verified Mobile Charge</span>
+                  <span style={{ fontWeight: 800, fontSize: '14px' }}>{r.author_name || 'Verified EV Driver'}</span>
+                  {r.vehicle_model && (
+                    <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>· {r.vehicle_model}</span>
+                  )}
                 </div>
                 <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
                   {new Date(r.created_at || Date.now()).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
@@ -159,7 +162,7 @@ export default function ReviewsFeedbackPage() {
       )}
 
       {/* Write Review Modal (Clients Only) */}
-      <Modal isOpen={showReviewModal} onClose={() => setShowReviewModal(false)} title="Write Customer Review (order_reviews)">
+      <Modal isOpen={showReviewModal} onClose={() => setShowReviewModal(false)} title="Share Your Charging Experience">
         <form onSubmit={handleSubmitReview}>
           <div style={{ marginBottom: '16px' }}>
             <label style={{ fontSize: '12px', fontWeight: 800, display: 'block', marginBottom: '6px' }}>Rating Score</label>

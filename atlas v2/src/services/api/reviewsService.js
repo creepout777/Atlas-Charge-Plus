@@ -8,7 +8,7 @@ export const reviewsService = {
       .order('created_at', { ascending: false });
   },
 
-  async createReview(reviewData, userId) {
+  async createReview(reviewData, userId, authorName = 'Verified EV Client', vehicleModel = 'EV Fleet') {
     const record = {
       id: reviewData.id || crypto.randomUUID(),
       order_id: reviewData.order_id || null,
@@ -18,6 +18,8 @@ export const reviewsService = {
       rating_stars: parseInt(reviewData.rating_stars) || 5,
       feedback_tags: reviewData.feedback_tags || 'Fast,Professional',
       comment: reviewData.comment || '',
+      author_name: reviewData.author_name || authorName,
+      vehicle_model: reviewData.vehicle_model || vehicleModel,
       created_at: new Date().toISOString(),
     };
     return await supabase

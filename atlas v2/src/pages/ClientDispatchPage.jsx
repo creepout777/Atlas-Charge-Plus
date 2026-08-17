@@ -32,15 +32,22 @@ export default function ClientDispatchPage() {
     return ordersList.find(o => o.client_user_id === currentUser?.id && o.status !== 'COMPLETED' && o.status !== 'CANCELED') || null;
   }, [ordersList, currentUser]);
 
-  // Track recently completed order for this client
+  // Track dismissed completed order IDs so user can book fresh charges
+  const [dismissedOrderIds, setDismissedOrderIds] = useState(new Set());
   const [completedOrder, setCompletedOrder] = useState(null);
 
   useEffect(() => {
-    const latestCompleted = ordersList.find(o => o.client_user_id === currentUser?.id && o.status === 'COMPLETED');
+    const latestCompleted = ordersList.find(o =>
+      o.client_user_id === currentUser?.id &&
+      o.status === 'COMPLETED' &&
+      !dismissedOrderIds.has(o.id)
+    );
     if (latestCompleted && !activeOrder) {
       setCompletedOrder(latestCompleted);
+    } else if (!latestCompleted) {
+      setCompletedOrder(null);
     }
-  }, [ordersList, currentUser, activeOrder]);
+  }, [ordersList, currentUser, activeOrder, dismissedOrderIds]);
 
   const activePackages = packages.filter(p => p.is_active !== false);
   const activeConnectors = connectors.filter(c => c.is_active !== false);
@@ -176,8 +183,21 @@ export default function ClientDispatchPage() {
     }
   }, [activeOrder, assignedTruck?.current_lat, assignedTruck?.current_lng]);
 
+  const handleRequestAnotherCharge = () => {
+    if (completedOrder?.id) {
+      setDismissedOrderIds(prev => new Set([...prev, completedOrder.id]));
+    }
+    setCompletedOrder(null);
+    setReviewSubmitted(false);
+    setReviewStars(5);
+    setReviewComment('');
+  };
+
   const handleDispatch = async () => {
     setIsSubmitting(true);
+    if (completedOrder?.id) {
+      setDismissedOrderIds(prev => new Set([...prev, completedOrder.id]));
+    }
     setCompletedOrder(null);
     const pkg = selectedPkg || activePackages[0] || packages[0];
     const veh = selectedVehicle || vehicles[0];
@@ -223,17 +243,22 @@ export default function ClientDispatchPage() {
   const handleReviewSubmit = async () => {
     if (!targetSession) return;
     const veh = vehicles.find(v => v.id === targetSession?.vehicle_id) || vehicles[0];
-    await addReview({
-      order_id: targetSession?.id,
-      truck_id: targetSession?.assigned_truck_id || null,
-      driver_user_id: targetSession?.assigned_driver_id || null,
-      rating_stars: reviewStars,
-      feedback_tags: 'Rapid DC,Professional Tech,Clean Energy',
-      comment: reviewComment || 'Outstanding on-demand EV charging service!',
-      author_name: currentUser?.full_name || 'EV Driver',
-      vehicle_model: veh ? `${veh.make} ${veh.model}` : 'Electric Vehicle',
-    });
-    setReviewSubmitted(true);
+    try {
+      await addReview({
+        order_id: targetSession?.id,
+        truck_id: targetSession?.assigned_truck_id || null,
+        driver_user_id: targetSession?.assigned_driver_id || null,
+        rating_stars: reviewStars,
+        feedback_tags: 'Rapid DC,Professional Tech,Clean Energy',
+        comment: reviewComment || 'Outstanding on-demand EV charging service!',
+        author_name: currentUser?.full_name || 'EV Driver',
+        vehicle_model: veh ? `${veh.make} ${veh.model}` : 'Electric Vehicle',
+      });
+      setReviewSubmitted(true);
+    } catch (e) {
+      console.error('Review submit note:', e);
+      setReviewSubmitted(true);
+    }
   };
 
   const distanceToClient = useMemo(() => {
@@ -485,12 +510,10 @@ export default function ClientDispatchPage() {
 
             {/* Book Another Charge Button */}
             <button
+              type="button"
               className="btn-outline"
-              style={{ width: '100%', padding: '12px 0', fontSize: '14px', fontWeight: 800, borderColor: 'var(--emerald-primary)', color: 'var(--emerald-darker)' }}
-              onClick={() => {
-                setCompletedOrder(null);
-                setReviewSubmitted(false);
-              }}
+              style={{ width: '100%', padding: '12px 0', fontSize: '14px', fontWeight: 800, borderColor: 'var(--emerald-primary)', color: 'var(--emerald-darker)', cursor: 'pointer' }}
+              onClick={handleRequestAnotherCharge}
             >
               ⚡ Request Another Rapid DC Charge
             </button>

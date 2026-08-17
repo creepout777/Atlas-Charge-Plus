@@ -56,4 +56,22 @@ export const paymentsService = {
     }
     return await query.order('issued_at', { ascending: false });
   },
+
+  async createInvoice(invoiceData) {
+    const record = {
+      id: invoiceData.id || crypto.randomUUID(),
+      order_id: invoiceData.order_id,
+      client_user_id: invoiceData.client_user_id,
+      callout_fee_amount: parseFloat(invoiceData.callout_fee_amount) || 5.00,
+      energy_delivered_amount: parseFloat(invoiceData.energy_delivered_amount) || 12.25,
+      total_billed_amount: parseFloat(invoiceData.total_billed_amount) || 17.25,
+      pdf_url: invoiceData.pdf_url || `https://atlas-charge.com/invoices/inv_${Date.now().toString().slice(-6)}.pdf`,
+      issued_at: new Date().toISOString(),
+    };
+    return await supabase
+      .from('order_invoices')
+      .insert([record])
+      .select()
+      .single();
+  },
 };

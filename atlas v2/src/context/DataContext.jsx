@@ -285,9 +285,29 @@ export function DataProvider({ children }) {
         setPaymentMethods(prevList);
         throw error;
       }
-      await refetchPaymentMethods();
     } catch (e) {
       setPaymentMethods(prevList);
+      throw e;
+    }
+  };
+
+  // ── Invoices Operations ────────────────────────────────────────
+  const addInvoice = async (invoiceData) => {
+    const tempId = crypto.randomUUID();
+    const tempRecord = { id: tempId, issued_at: new Date().toISOString(), ...invoiceData };
+    setInvoices(prev => [tempRecord, ...prev]);
+
+    try {
+      const { data, error } = await paymentsService.createInvoice(invoiceData);
+      if (error) {
+        console.error('Create invoice error:', error.message);
+        setInvoices(prev => prev.filter(inv => inv.id !== tempId));
+        throw error;
+      }
+      await refetchInvoices();
+      return data;
+    } catch (e) {
+      setInvoices(prev => prev.filter(inv => inv.id !== tempId));
       throw e;
     }
   };
@@ -789,6 +809,7 @@ export function DataProvider({ children }) {
       addPaymentMethod,
       setDefaultPaymentMethod,
       deletePaymentMethod,
+      addInvoice,
       addReview,
       updateTruck,
       addTruck,

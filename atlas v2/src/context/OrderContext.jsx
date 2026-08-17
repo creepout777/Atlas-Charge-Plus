@@ -1,24 +1,21 @@
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
 import { ordersService } from '../services/api/ordersService.js';
 import { useAuth } from './AuthContext.jsx';
 
 const OrderContext = createContext();
 
 export function OrderProvider({ children }) {
-  const { session } = useAuth();
-  const [activeOrder, setActiveOrder] = useState(null);
+  const { session, currentUser } = useAuth();
   const [ordersList, setOrdersList] = useState([]);
   const [telemetryLogs, setTelemetryLogs] = useState([]);
   const [breadcrumbs, setBreadcrumbs] = useState([]);
 
-  // Fetch orders from database
+  // Fetch orders from Supabase database
   const fetchOrders = useCallback(async () => {
     try {
       const { data, error } = await ordersService.getOrders();
       if (!error && data) {
         setOrdersList(data);
-        const active = data.find(o => o.status !== 'COMPLETED' && o.status !== 'CANCELED');
-        if (active) setActiveOrder(active);
       }
     } catch (e) {
       console.warn('Error fetching orders:', e.message);
@@ -33,11 +30,9 @@ export function OrderProvider({ children }) {
       session?.user?.id,
       (newOrder) => {
         setOrdersList(prev => [newOrder, ...prev.filter(o => o.id !== newOrder.id)]);
-        setActiveOrder(newOrder);
       },
       (updatedOrder) => {
         setOrdersList(prev => prev.map(o => o.id === updatedOrder.id ? updatedOrder : o));
-        setActiveOrder(curr => (curr && curr.id === updatedOrder.id) ? updatedOrder : curr);
       }
     );
 
@@ -46,9 +41,27 @@ export function OrderProvider({ children }) {
     };
   }, [session, fetchOrders]);
 
-  // Create a new order
+  // Compute active order based on current user role
+  const activeOrder = useMemo(() => {
+    if (!currentUser) {
+      return ordersList.find(o => o.status !== 'COMPLETED' && o.status !== 'CANCELED') || null;
+    }
+
+    if (currentUser.role === 'CLIENT') {
+      return ordersList.find(o => o.client_user_id === currentUser.id && o.status !== 'COMPLETED' && o.status !== 'CANCELED') || null;
+    }
+
+    if (currentUser.role === 'DRIVER') {
+      return ordersList.find(o => o.assigned_driver_id === currentUser.id && o.status !== 'COMPLETED' && o.status !== 'CANCELED') || null;
+    }
+
+    // Admins and Dispatchers see the latest active dispatch
+    return ordersList.find(o => o.status !== 'COMPLETED' && o.status !== 'CANCELED') || null;
+  }, [ordersList, currentUser]);
+
+  // Create a new order (Client)
   const createOrder = async (orderData) => {
-    const userId = session?.user?.id || 'a1111111-1111-1111-1111-111111111111';
+    const userId = currentUser?.id || session?.user?.id || 'a1111111-1111-1111-1111-111111111111';
     const tempId = crypto.randomUUID();
     const tempRecord = {
       id: tempId,
@@ -58,7 +71,6 @@ export function OrderProvider({ children }) {
       ...orderData,
     };
 
-    setActiveOrder(tempRecord);
     setOrdersList(prev => [tempRecord, ...prev]);
 
     try {
@@ -66,77 +78,78 @@ export function OrderProvider({ children }) {
       if (error) {
         console.error('Create order error:', error.message);
         setOrdersList(prev => prev.filter(o => o.id !== tempId));
-        if (activeOrder?.id === tempId) setActiveOrder(null);
         throw error;
       }
       if (data) {
-        setActiveOrder(data);
         setOrdersList(prev => prev.map(o => o.id === tempId ? data : o));
       }
       await fetchOrders();
       return data;
     } catch (e) {
       setOrdersList(prev => prev.filter(o => o.id !== tempId));
-      if (activeOrder?.id === tempId) setActiveOrder(null);
       throw e;
     }
   };
 
+  // Update order status
   const updateStatus = async (orderId, statusFields) => {
-    const prevActive = activeOrder;
     const prevList = [...ordersList];
-
-    setActiveOrder(prev => prev && prev.id === orderId ? { ...prev, ...statusFields } : prev);
     setOrdersList(prev => prev.map(o => o.id === orderId ? { ...o, ...statusFields } : o));
 
     try {
       const { data, error } = await ordersService.updateOrder(orderId, statusFields);
       if (error) {
         console.error('Update order error:', error.message);
-        setActiveOrder(prevActive);
         setOrdersList(prevList);
         throw error;
       }
       await fetchOrders();
       return data;
     } catch (e) {
-      setActiveOrder(prevActive);
       setOrdersList(prevList);
       throw e;
     }
   };
 
+  // Claim unassigned job from queue (Driver)
+  const claimOrder = async (orderId, driverId, truckId) => {
+    return await updateStatus(orderId, {
+      assigned_driver_id: driverId,
+      assigned_truck_id: truckId,
+      status: 'EN_ROUTE',
+    });
+  };
+
+  // Assign Truck (Dispatcher / Admin)
   const assignTruckToOrder = async (orderId, truckId) => {
     return await updateStatus(orderId, { assigned_truck_id: truckId });
   };
 
+  // Assign Driver (Dispatcher / Admin)
   const assignDriverToOrder = async (orderId, driverId) => {
     return await updateStatus(orderId, { assigned_driver_id: driverId });
   };
 
+  // Delete / Cancel order
   const deleteOrder = async (orderId) => {
-    const prevActive = activeOrder;
     const prevList = [...ordersList];
-
-    setActiveOrder(prev => prev && prev.id === orderId ? null : prev);
     setOrdersList(prev => prev.filter(o => o.id !== orderId));
 
     try {
       const { error } = await ordersService.deleteOrder(orderId);
       if (error) {
         console.error('Delete order error:', error.message);
-        setActiveOrder(prevActive);
         setOrdersList(prevList);
         throw error;
       }
       await fetchOrders();
     } catch (e) {
-      setActiveOrder(prevActive);
       setOrdersList(prevList);
       throw e;
     }
   };
 
+  // Telemetry stream
   const logTelemetry = async (logData) => {
     setTelemetryLogs(prev => [logData, ...prev.slice(0, 50)]);
     try {
@@ -146,6 +159,7 @@ export function OrderProvider({ children }) {
     }
   };
 
+  // GPS breadcrumb broadcast
   const broadcastGps = async (truckId, lat, lng, bearing = 90) => {
     const validOrderId = (activeOrder && activeOrder.id && !activeOrder.id.startsWith('ord')) ? activeOrder.id : null;
     const breadcrumb = {
@@ -169,12 +183,12 @@ export function OrderProvider({ children }) {
   return (
     <OrderContext.Provider value={{
       activeOrder,
-      setActiveOrder,
       ordersList,
       telemetryLogs,
       breadcrumbs,
       createOrder,
       updateStatus,
+      claimOrder,
       assignTruckToOrder,
       assignDriverToOrder,
       deleteOrder,

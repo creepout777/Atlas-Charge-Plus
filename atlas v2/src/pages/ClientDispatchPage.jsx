@@ -1,33 +1,45 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import { Zap, Navigation, Clock, ShieldCheck, CheckCircle2, Star, Sparkles, MapPin, Gauge, Cpu } from 'lucide-react';
+import { Zap, Navigation, Clock, ShieldCheck, CheckCircle2, Star, Sparkles, MapPin, Gauge, Cpu, Phone, Truck, User, BatteryCharging, AlertCircle } from 'lucide-react';
 import { useOrder } from '../context/OrderContext';
 import { useData } from '../context/DataContext';
+import { useAuth } from '../context/AuthContext';
 import MobileSheet from '../components/layout/MobileSheet';
 import Modal from '../components/layout/Modal';
 import SpeedometerGauge from '../components/telemetry/SpeedometerGauge';
 import StarRating from '../components/shared/StarRating';
 
 export default function ClientDispatchPage() {
-  const { activeOrder, createOrder, updateStatus } = useOrder();
-  const { vehicles, packages, connectors, addReview } = useData();
+  const { currentUser } = useAuth();
+  const { ordersList, createOrder, updateStatus } = useOrder();
+  const { vehicles, packages, connectors, trucks, drivers, addReview } = useData();
+
+  // Find this client's active order
+  const activeOrder = useMemo(() => {
+    return ordersList.find(o => o.client_user_id === currentUser?.id && o.status !== 'COMPLETED' && o.status !== 'CANCELED') || null;
+  }, [ordersList, currentUser]);
 
   const activePackages = packages.filter(p => p.is_active !== false);
   const activeConnectors = connectors.filter(c => c.is_active !== false);
 
-  const [selectedPkg, setSelectedPkg] = useState(activePackages[1] || activePackages[0] || packages[0]);
-  const [selectedVehicle, setSelectedVehicle] = useState(vehicles[0]);
-  const [selectedConnector, setSelectedConnector] = useState(activeConnectors[0] || connectors[0]);
+  const [selectedPkg, setSelectedPkg] = useState(null);
+  const [selectedVehicle, setSelectedVehicle] = useState(null);
+  const [selectedConnector, setSelectedConnector] = useState(null);
+  const [targetAddress, setTargetAddress] = useState('45 Kensington High St, London W8 5ED');
+  const [targetCoords, setTargetCoords] = useState([51.5014, -0.1918]);
+
   const [showReviewModal, setShowReviewModal] = useState(false);
   const [reviewStars, setReviewStars] = useState(5);
   const [reviewComment, setReviewComment] = useState('');
   const [reviewSubmitted, setReviewSubmitted] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const mapContainerRef = useRef(null);
   const mapInstanceRef = useRef(null);
   const clientMarkerRef = useRef(null);
   const truckMarkerRef = useRef(null);
+  const routeLineRef = useRef(null);
 
   useEffect(() => {
     if (activePackages.length > 0 && !selectedPkg) setSelectedPkg(activePackages[1] || activePackages[0]);
@@ -35,12 +47,21 @@ export default function ClientDispatchPage() {
     if (activeConnectors.length > 0 && !selectedConnector) setSelectedConnector(activeConnectors[0]);
   }, [packages, vehicles, connectors]);
 
-  // Initialize Leaflet Map
+  // Assigned Truck & Driver info
+  const assignedTruck = useMemo(() => {
+    return trucks.find(t => t.id === activeOrder?.assigned_truck_id) || trucks[0] || null;
+  }, [trucks, activeOrder]);
+
+  const assignedDriver = useMemo(() => {
+    return drivers.find(d => d.user_id === activeOrder?.assigned_driver_id) || drivers[0] || null;
+  }, [drivers, activeOrder]);
+
+  // Initialize Map
   useEffect(() => {
     if (!mapContainerRef.current || mapInstanceRef.current) return;
 
     const map = L.map(mapContainerRef.current, {
-      center: [51.5014, -0.1918], // Kensington, London
+      center: targetCoords,
       zoom: 14,
       zoomControl: false,
     });
@@ -53,11 +74,20 @@ export default function ClientDispatchPage() {
 
     const clientIcon = L.divIcon({
       className: 'custom-client-icon',
-      html: '<div class="client-pulse-marker"></div>',
-      iconSize: [24, 24],
-      iconAnchor: [12, 12],
+      html: '<div class="client-pulse-marker" title="Your EV Location"></div>',
+      iconSize: [26, 26],
+      iconAnchor: [13, 13],
     });
-    clientMarkerRef.current = L.marker([51.5014, -0.1918], { icon: clientIcon }).addTo(map);
+    clientMarkerRef.current = L.marker(targetCoords, { icon: clientIcon }).addTo(map);
+
+    // Map click to reposition pin
+    map.on('click', (e) => {
+      if (activeOrder) return; // Locked during active dispatch
+      const newPos = [e.latlng.lat, e.latlng.lng];
+      setTargetCoords(newPos);
+      setTargetAddress(`Pinned Spot (${newPos[0].toFixed(4)}, ${newPos[1].toFixed(4)})`);
+      if (clientMarkerRef.current) clientMarkerRef.current.setLatLng(newPos);
+    });
 
     return () => {
       map.remove();
@@ -65,16 +95,19 @@ export default function ClientDispatchPage() {
     };
   }, []);
 
-  // Update Truck Marker during Active Order
+  // Update Truck Marker & Route during Active Order
   useEffect(() => {
     if (!mapInstanceRef.current) return;
 
     if (activeOrder && activeOrder.status !== 'WAITING_APPROVAL' && activeOrder.status !== 'COMPLETED') {
+      const truckPos = [assignedTruck?.current_lat || assignedTruck?.base_lat || 51.5430, assignedTruck?.current_lng || assignedTruck?.base_lng || -0.0020];
+      const clientPos = [activeOrder.target_lat || targetCoords[0], activeOrder.target_lng || targetCoords[1]];
+
       if (!truckMarkerRef.current) {
         const truckIcon = L.divIcon({
           className: 'custom-truck-icon',
           html: `
-            <div class="truck-heading-marker">
+            <div class="truck-heading-marker" title="${assignedTruck?.display_name || 'Mobile Unit'}">
               <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                 <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
               </svg>
@@ -83,34 +116,83 @@ export default function ClientDispatchPage() {
           iconSize: [44, 44],
           iconAnchor: [22, 22],
         });
-        truckMarkerRef.current = L.marker([51.4652, -0.1195], { icon: truckIcon }).addTo(mapInstanceRef.current);
+        truckMarkerRef.current = L.marker(truckPos, { icon: truckIcon }).addTo(mapInstanceRef.current);
+      } else {
+        truckMarkerRef.current.setLatLng(truckPos);
+      }
+
+      // Draw route
+      if (!routeLineRef.current) {
+        routeLineRef.current = L.polyline([truckPos, clientPos], {
+          color: '#10b981',
+          weight: 4,
+          dashArray: '6, 8',
+          opacity: 0.85,
+        }).addTo(mapInstanceRef.current);
+      } else {
+        routeLineRef.current.setLatLngs([truckPos, clientPos]);
+      }
+
+      mapInstanceRef.current.fitBounds([truckPos, clientPos], { padding: [60, 60] });
+    } else {
+      if (truckMarkerRef.current) {
+        truckMarkerRef.current.remove();
+        truckMarkerRef.current = null;
+      }
+      if (routeLineRef.current) {
+        routeLineRef.current.remove();
+        routeLineRef.current = null;
       }
     }
-  }, [activeOrder]);
+  }, [activeOrder, assignedTruck]);
+
+  // Trigger Review modal on completion
+  useEffect(() => {
+    if (activeOrder && activeOrder.status === 'COMPLETED') {
+      setShowReviewModal(true);
+    }
+  }, [activeOrder?.status]);
 
   const handleDispatch = async () => {
-    const pkg = selectedPkg || packages[0];
+    setIsSubmitting(true);
+    const pkg = selectedPkg || activePackages[0] || packages[0];
     const veh = selectedVehicle || vehicles[0];
-    const conn = selectedConnector || connectors[0];
+    const conn = selectedConnector || activeConnectors[0] || connectors[0];
+    const kwh = pkg?.target_kwh || 35;
+    const callout = 5.00;
+    const kwhPrice = parseFloat((kwh * 0.35).toFixed(2));
+    const total = parseFloat((callout + kwhPrice).toFixed(2));
 
-    await createOrder({
-      charge_package_id: pkg.id,
-      connector_type_id: conn.id,
-      vehicle_id: veh.id,
-      target_address: '45 Kensington High St, London W8 5ED',
-      target_lat: 51.5014,
-      target_lng: -0.1918,
-      estimated_kwh_cost: (pkg.target_kwh || 35) * 0.35,
-      estimated_total_amount: 5.00 + ((pkg.target_kwh || 35) * 0.35),
-    });
+    try {
+      await createOrder({
+        charge_package_id: pkg?.id,
+        connector_type_id: conn?.id,
+        vehicle_id: veh?.id,
+        target_address: targetAddress,
+        target_lat: targetCoords[0],
+        target_lng: targetCoords[1],
+        estimated_callout_fee: callout,
+        estimated_kwh_cost: kwhPrice,
+        estimated_total_amount: total,
+      });
+    } catch (e) {
+      console.error('Dispatch error:', e);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleReviewSubmit = async () => {
+    const veh = vehicles.find(v => v.id === activeOrder?.vehicle_id) || vehicles[0];
     await addReview({
-      order_id: activeOrder ? activeOrder.id : 'ORD-982110',
+      order_id: activeOrder?.id,
+      truck_id: activeOrder?.assigned_truck_id || null,
+      driver_user_id: activeOrder?.assigned_driver_id || null,
       rating_stars: reviewStars,
-      feedback_tags: 'Fast,Professional,Clean',
-      comment: reviewComment || 'Great rapid charging experience!',
+      feedback_tags: 'Rapid DC,Professional Tech,Clean Energy',
+      comment: reviewComment || 'Outstanding on-demand EV charging service!',
+      author_name: currentUser?.full_name || 'EV Driver',
+      vehicle_model: veh ? `${veh.make} ${veh.model}` : 'Electric Vehicle',
     });
     setReviewSubmitted(true);
     setTimeout(() => {
@@ -120,7 +202,7 @@ export default function ClientDispatchPage() {
   };
 
   return (
-    <div className="map-layout">
+    <div className="map-layout" style={{ position: 'relative', height: 'calc(100vh - 64px)', overflow: 'hidden' }}>
       {/* Leaflet Map Canvas */}
       <div ref={mapContainerRef} style={{ width: '100%', height: '100%' }} />
 
@@ -133,168 +215,160 @@ export default function ClientDispatchPage() {
                 <div className="status-dot emerald pulse" />
                 <div>
                   <div style={{ fontSize: '11px', fontWeight: 800, color: 'var(--emerald-dark)' }}>PINNED DISPATCH TARGET</div>
-                  <div style={{ fontFamily: 'var(--font-display)', fontSize: '15px', fontWeight: 800 }}>45 Kensington High St, London W8</div>
+                  <div style={{ fontFamily: 'var(--font-display)', fontSize: '15px', fontWeight: 800 }}>{targetAddress}</div>
                 </div>
               </div>
               <span className="brand-pill">
-                <Zap size={12} /> Fast ETA: 12 min
+                <Zap size={12} /> Est. ETA: 12 min
               </span>
             </div>
 
-            {/* EV Selector */}
+            {/* EV Vehicle Selector */}
             <div style={{ marginBottom: '14px' }}>
               <label style={{ fontSize: '11px', fontWeight: 800, color: 'var(--slate-500)', display: 'block', marginBottom: '6px' }}>SELECT VEHICLE</label>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
-                {vehicles.map((veh) => (
-                  <div
-                    key={veh.id || veh.license_plate}
-                    onClick={() => setSelectedVehicle(veh)}
-                    style={{
-                      border: `2px solid ${selectedVehicle?.id === veh.id ? 'var(--emerald-primary)' : 'var(--border-subtle)'}`,
-                      background: selectedVehicle?.id === veh.id ? 'var(--emerald-light)' : 'var(--bg-surface)',
-                      borderRadius: 'var(--radius-md)',
-                      padding: '10px',
-                      cursor: 'pointer',
-                      transition: 'all 0.15s'
-                    }}
-                  >
-                    <div style={{ fontWeight: 800, fontSize: '13px' }}>{veh.make} {veh.model}</div>
-                    <div style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>{veh.license_plate} · {veh.battery_capacity_kwh}kWh</div>
-                  </div>
-                ))}
-              </div>
+              {vehicles.length === 0 ? (
+                <div style={{ padding: '10px 12px', background: 'var(--slate-50)', borderRadius: 'var(--radius-sm)', fontSize: '12px', color: 'var(--text-secondary)' }}>
+                  Default EV Profile (Tesla Model 3)
+                </div>
+              ) : (
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                  {vehicles.map((veh) => (
+                    <div
+                      key={veh.id}
+                      onClick={() => setSelectedVehicle(veh)}
+                      style={{
+                        padding: '10px',
+                        borderRadius: 'var(--radius-sm)',
+                        border: selectedVehicle?.id === veh.id ? '2px solid var(--emerald-primary)' : '1px solid var(--border-subtle)',
+                        background: selectedVehicle?.id === veh.id ? 'var(--emerald-light)' : '#fff',
+                        cursor: 'pointer',
+                      }}
+                    >
+                      <div style={{ fontWeight: 800, fontSize: '13px' }}>{veh.make} {veh.model}</div>
+                      <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>{veh.license_plate} · {veh.battery_capacity_kwh} kWh</div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
 
-            {/* Package Selector */}
+            {/* Energy Package Selector */}
             <div style={{ marginBottom: '16px' }}>
-              <label style={{ fontSize: '11px', fontWeight: 800, color: 'var(--slate-500)', display: 'block', marginBottom: '6px' }}>CHARGE PACKAGE</label>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              <label style={{ fontSize: '11px', fontWeight: 800, color: 'var(--slate-500)', display: 'block', marginBottom: '6px' }}>CHOOSE CHARGE PACKAGE (150kW DC)</label>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px' }}>
                 {activePackages.map((pkg) => (
                   <div
                     key={pkg.id}
                     onClick={() => setSelectedPkg(pkg)}
                     style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                      border: `2px solid ${selectedPkg?.id === pkg.id ? 'var(--emerald-primary)' : 'var(--border-subtle)'}`,
-                      background: selectedPkg?.id === pkg.id ? 'var(--emerald-light)' : 'var(--bg-surface)',
-                      borderRadius: 'var(--radius-md)',
-                      padding: '12px',
-                      cursor: 'pointer'
+                      padding: '10px',
+                      borderRadius: 'var(--radius-sm)',
+                      border: selectedPkg?.id === pkg.id ? '2px solid var(--emerald-primary)' : '1px solid var(--border-subtle)',
+                      background: selectedPkg?.id === pkg.id ? 'var(--emerald-light)' : '#fff',
+                      cursor: 'pointer',
+                      textAlign: 'center',
                     }}
                   >
-                    <div>
-                      <div style={{ fontWeight: 800, fontSize: '14px' }}>{pkg.display_name} ({pkg.target_kwh} kWh)</div>
-                      <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>{pkg.description} · {pkg.display_estimate_label}</div>
-                    </div>
-                    <div style={{ textAlign: 'right', fontWeight: 900, color: 'var(--emerald-darker)', fontSize: '15px' }}>
-                      £{(5.00 + (pkg.target_kwh * 0.35)).toFixed(2)}
-                    </div>
+                    <div style={{ fontWeight: 800, fontSize: '13px' }}>{pkg.display_name}</div>
+                    <div style={{ fontWeight: 900, fontSize: '15px', color: 'var(--emerald-darker)', margin: '2px 0' }}>{pkg.target_kwh} kWh</div>
+                    <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>£{(5.00 + (pkg.target_kwh * 0.35)).toFixed(2)}</div>
                   </div>
                 ))}
               </div>
             </div>
 
-            <button className="btn-emerald" onClick={handleDispatch}>
-              <Zap size={18} />
-              Authorize & Dispatch Mobile Unit (£{(5.00 + ((selectedPkg?.target_kwh || 35) * 0.35)).toFixed(2)})
+            {/* Submit Request Button */}
+            <button className="btn-emerald" style={{ fontSize: '15px', padding: '12px 0' }} disabled={isSubmitting} onClick={handleDispatch}>
+              <Zap size={18} /> {isSubmitting ? 'Locating Nearest Mobile Titan...' : 'Request Mobile DC Rapid Charge'}
             </button>
-          </div>
-        ) : activeOrder.status === 'WAITING_APPROVAL' ? (
-          <div style={{ textAlign: 'center', padding: '10px 0' }}>
-            <div style={{ width: '48px', height: '48px', background: 'var(--amber-light)', border: '2px solid var(--amber-primary)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 12px', color: 'var(--amber-primary)' }}>
-              <Clock size={24} />
-            </div>
-            <div style={{ fontFamily: 'var(--font-display)', fontSize: '18px', fontWeight: 800 }}>Dispatch Broadcast Active</div>
-            <div style={{ fontSize: '13px', color: 'var(--text-secondary)', margin: '4px 0 16px' }}>Order #{activeOrder.order_reference} broadcasted to mobile technicians in Supabase...</div>
-            <button className="btn-outline" style={{ width: '100%' }} onClick={() => updateStatus(activeOrder.id, { status: 'CANCELED' })}>
-              Cancel Request
-            </button>
-          </div>
-        ) : activeOrder.status === 'EN_ROUTE' ? (
-          <div>
-            <div style={{ background: 'var(--emerald-light)', border: '1px solid var(--emerald-border)', borderRadius: 'var(--radius-md)', padding: '14px', marginBottom: '14px' }}>
-              <div style={{ fontSize: '11px', fontWeight: 800, color: 'var(--emerald-dark)', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <span className="status-dot emerald pulse" /> DRIVER EN ROUTE
-              </div>
-              <div style={{ fontFamily: 'var(--font-display)', fontSize: '16px', fontWeight: 800, marginTop: '4px' }}>Atlas Titan #01 is Navigating to You</div>
-              <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>Technician <b>Marcus Webb</b> is 8 mins away.</div>
-            </div>
-            <div className="metric-card" style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '14px' }}>
-              <div>
-                <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>PLATE</div>
-                <div style={{ fontWeight: 800 }}>EK72 ZAP</div>
-              </div>
-              <div>
-                <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>CONNECTOR</div>
-                <div style={{ fontWeight: 800 }}>CCS Rapid 150kW</div>
-              </div>
-              <div>
-                <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>ESTIMATED TOTAL</div>
-                <div style={{ fontWeight: 800, color: 'var(--emerald-dark)' }}>£17.25</div>
-              </div>
-            </div>
-          </div>
-        ) : activeOrder.status === 'CHARGING' ? (
-          <div>
-            <div style={{ background: 'var(--cyan-light)', border: '1px solid var(--cyan-primary)', borderRadius: 'var(--radius-md)', padding: '12px', textAlign: 'center', marginBottom: '10px' }}>
-              <div style={{ fontSize: '11px', fontWeight: 800, color: 'var(--cyan-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
-                <span className="status-dot emerald pulse" /> HIGH-POWER RAPID CHARGING ACTIVE
-              </div>
-              <div style={{ fontFamily: 'var(--font-display)', fontSize: '16px', fontWeight: 800, marginTop: '2px' }}>Vehicle Receiving High-Voltage DC</div>
-            </div>
-            <SpeedometerGauge currentKw={145.5} maxKw={150} />
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginTop: '10px' }}>
-              <div className="metric-card" style={{ textAlign: 'center' }}>
-                <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>ENERGY DELIVERED</div>
-                <div style={{ fontSize: '18px', fontWeight: 900, fontFamily: 'var(--font-mono)' }}>18.5 kWh</div>
-              </div>
-              <div className="metric-card" style={{ textAlign: 'center' }}>
-                <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>CURRENT BATTERY</div>
-                <div style={{ fontSize: '18px', fontWeight: 900, fontFamily: 'var(--font-mono)', color: 'var(--emerald-dark)' }}>58%</div>
-              </div>
-            </div>
           </div>
         ) : (
-          <div style={{ textAlign: 'center', padding: '10px 0' }}>
-            <div style={{ width: '48px', height: '48px', background: 'var(--emerald-light)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 12px', color: 'var(--emerald-primary)' }}>
-              <CheckCircle2 size={26} />
+          <div>
+            {/* Active Dispatch Progress Bar */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
+              <div>
+                <span className="brand-pill" style={{ background: 'var(--emerald-light)', color: 'var(--emerald-darker)', fontWeight: 800 }}>
+                  ● {activeOrder.status === 'WAITING_APPROVAL' ? 'Pairing Mobile Titan...' : activeOrder.status === 'EN_ROUTE' ? 'Technician En Route' : activeOrder.status === 'ARRIVED' ? 'Mobile Unit Arrived Outside' : activeOrder.status === 'CHARGING' ? '⚡ 150kW DC Active' : 'Session Completed'}
+                </span>
+                <div style={{ fontWeight: 900, fontSize: '17px', marginTop: '4px' }}>{activeOrder.target_address}</div>
+              </div>
+              <span className="brand-pill" style={{ fontFamily: 'var(--font-mono)' }}>
+                {activeOrder.order_reference || activeOrder.id?.slice(0, 8)}
+              </span>
             </div>
-            <div style={{ fontFamily: 'var(--font-display)', fontSize: '18px', fontWeight: 800 }}>Charging Complete!</div>
-            <div style={{ fontSize: '13px', color: 'var(--text-secondary)', margin: '4px 0 16px' }}>35.0 kWh delivered. Billed £17.25 to Visa card.</div>
-            <button className="btn-emerald" onClick={() => setShowReviewModal(true)}>
-              <Star size={16} /> Rate Technician & Experience
-            </button>
+
+            {/* Assigned Unit & Technician Info */}
+            {activeOrder.status !== 'WAITING_APPROVAL' && (
+              <div style={{ background: 'var(--slate-50)', padding: '12px 14px', borderRadius: 'var(--radius-md)', marginBottom: '14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                  <div style={{ width: '38px', height: '38px', background: 'var(--emerald-light)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--emerald-darker)' }}>
+                    <Truck size={18} />
+                  </div>
+                  <div>
+                    <div style={{ fontWeight: 800, fontSize: '14px' }}>{assignedTruck?.display_name || 'Atlas Titan Mobile'} ({assignedTruck?.license_plate || 'EK24 EVX'})</div>
+                    <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>Tech: <b>{assignedDriver?.full_name || 'Field Technician'}</b></div>
+                  </div>
+                </div>
+                <a href="tel:+447911999888" className="btn-outline" style={{ padding: '6px 10px', fontSize: '12px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                  <Phone size={13} /> Call Tech
+                </a>
+              </div>
+            )}
+
+            {/* Live Telemetry View during Charging */}
+            {activeOrder.status === 'CHARGING' && (
+              <div>
+                <div style={{ display: 'flex', justifyContent: 'center', margin: '10px 0' }}>
+                  <SpeedometerGauge currentKw={150} maxKw={150} />
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px', marginBottom: '14px' }}>
+                  <div className="metric-card">
+                    <div style={{ fontSize: '10px', color: 'var(--text-muted)' }}>DELIVERED</div>
+                    <div style={{ fontWeight: 900, fontSize: '16px', color: 'var(--emerald-dark)' }}>{activeOrder.actual_kwh_delivered || 14.5} kWh</div>
+                  </div>
+                  <div className="metric-card">
+                    <div style={{ fontSize: '10px', color: 'var(--text-muted)' }}>DC VOLTAGE</div>
+                    <div style={{ fontWeight: 900, fontSize: '16px', color: '#0284c7' }}>820 V</div>
+                  </div>
+                  <div className="metric-card">
+                    <div style={{ fontSize: '10px', color: 'var(--text-muted)' }}>RATE</div>
+                    <div style={{ fontWeight: 900, fontSize: '16px' }}>150 kW</div>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         )}
       </MobileSheet>
 
-      {/* Review Modal */}
-      <Modal isOpen={showReviewModal} onClose={() => setShowReviewModal(false)} title="Rate Your Charging Experience">
+      {/* MODAL: Verified Review Submission */}
+      <Modal isOpen={showReviewModal} onClose={() => setShowReviewModal(false)} title="⭐ Rate Your Rapid DC Charge">
         {reviewSubmitted ? (
-          <div style={{ textAlign: 'center', padding: '20px 0' }}>
-            <CheckCircle2 size={40} color="var(--emerald-primary)" style={{ margin: '0 auto 10px' }} />
-            <div style={{ fontWeight: 800, fontSize: '16px' }}>Thank You for Your Feedback!</div>
+          <div style={{ textAlign: 'center', padding: '24px 0' }}>
+            <CheckCircle2 size={44} color="var(--emerald-primary)" style={{ margin: '0 auto 12px' }} />
+            <div style={{ fontWeight: 900, fontSize: '18px' }}>Thank You for Your Feedback!</div>
+            <div style={{ fontSize: '13px', color: 'var(--text-secondary)', marginTop: '4px' }}>Your review has been verified and published to the live testimonials feed.</div>
           </div>
         ) : (
           <div>
-            <div style={{ textAlign: 'center', marginBottom: '16px' }}>
-              <div style={{ fontSize: '13px', color: 'var(--text-secondary)', marginBottom: '8px' }}>How was Technician Marcus Webb?</div>
-              <div style={{ display: 'flex', justifyContent: 'center' }}>
-                <StarRating rating={reviewStars} onRate={setReviewStars} editable />
-              </div>
+            <div style={{ textAlign: 'center', marginBottom: '18px' }}>
+              <div style={{ fontSize: '13px', color: 'var(--text-secondary)', marginBottom: '8px' }}>How was your high-power DC charging experience with Atlas Charge?</div>
+              <StarRating value={reviewStars} onChange={setReviewStars} size={28} />
             </div>
-            <textarea
-              className="metric-card"
-              rows={3}
-              placeholder="Leave an optional comment..."
-              value={reviewComment}
-              onChange={e => setReviewComment(e.target.value)}
-              style={{ width: '100%', marginBottom: '14px', outline: 'none' }}
-            />
-            <button className="btn-emerald" onClick={handleReviewSubmit}>
-              Submit Verified Review
+
+            <div style={{ marginBottom: '18px' }}>
+              <label style={{ fontSize: '12px', fontWeight: 800, display: 'block', marginBottom: '4px' }}>Leave a comment (Optional)</label>
+              <textarea
+                className="metric-card"
+                style={{ width: '100%', minHeight: '80px', outline: 'none', resize: 'vertical', fontFamily: 'inherit' }}
+                placeholder="Lightning-fast 150kW boost, technician arrived right on time..."
+                value={reviewComment}
+                onChange={e => setReviewComment(e.target.value)}
+              />
+            </div>
+
+            <button className="btn-emerald" style={{ fontSize: '15px', padding: '12px 0' }} onClick={handleReviewSubmit}>
+              Submit Verified Customer Review
             </button>
           </div>
         )}

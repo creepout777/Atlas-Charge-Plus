@@ -137,45 +137,41 @@ export function OrderProvider({ children }) {
   };
 
   // Delete / Cancel order
+  // Delete / Cancel order
   const deleteOrder = async (orderId) => {
-    const prevList = [...ordersList];
+    if (!orderId) return;
     setOrdersList(prev => prev.filter(o => o.id !== orderId));
 
     try {
       const { error } = await ordersService.deleteOrder(orderId);
       if (error) {
         console.error('Delete order error:', error.message);
-        setOrdersList(prevList);
-        throw error;
       }
       await fetchOrders();
     } catch (e) {
-      setOrdersList(prevList);
-      throw e;
+      console.warn('Delete order error:', e.message);
+      await fetchOrders();
     }
   };
 
-  // Cancel order (sets status to CANCELED)
+  // Cancel order (optimistic instant reset + DB cleanup)
   const cancelOrder = async (orderId) => {
-    const prevList = [...ordersList];
-    setOrdersList(prev => prev.map(o => o.id === orderId ? { ...o, status: 'CANCELED' } : o));
+    if (!orderId) return;
+    setOrdersList(prev => prev.filter(o => o.id !== orderId));
 
     try {
-      const { data, error } = await ordersService.updateOrder(orderId, { status: 'CANCELED' });
+      const { error } = await ordersService.deleteOrder(orderId);
       if (error) {
-        await ordersService.deleteOrder(orderId);
+        await ordersService.updateOrder(orderId, { status: 'CANCELED' });
       }
-      await fetchOrders();
-      return data;
     } catch (e) {
       try {
-        await ordersService.deleteOrder(orderId);
-        await fetchOrders();
+        await ordersService.updateOrder(orderId, { status: 'CANCELED' });
       } catch (err) {
-        setOrdersList(prevList);
-        throw err;
+        console.warn('Cancel order error:', err.message);
       }
     }
+    await fetchOrders();
   };
 
   // Telemetry stream

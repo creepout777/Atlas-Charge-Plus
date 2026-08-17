@@ -209,14 +209,14 @@ export default function ClientDispatchPage() {
     }
   };
 
-  const handleCancelOrder = async () => {
+  const handleCancelOrder = async (e) => {
+    if (e) e.stopPropagation();
     if (!activeOrder) return;
-    if (window.confirm('Are you sure you want to cancel this rapid charging dispatch request?')) {
-      try {
-        await cancelOrder(activeOrder.id);
-      } catch (err) {
-        console.error('Cancel order error:', err);
-      }
+    try {
+      await cancelOrder(activeOrder.id);
+      setCompletedOrder(null);
+    } catch (err) {
+      console.error('Cancel order error:', err);
     }
   };
 
@@ -343,9 +343,14 @@ export default function ClientDispatchPage() {
                 <span className="brand-pill" style={{ fontFamily: 'var(--font-mono)' }}>
                   {activeOrder.order_reference || activeOrder.id?.slice(0, 8)}
                 </span>
-                {activeOrder.status === 'WAITING_APPROVAL' && (
-                  <button className="btn-outline" style={{ padding: '4px 8px', fontSize: '11px', color: '#dc2626' }} onClick={handleCancelOrder}>
-                    <X size={12} /> Cancel
+                {(activeOrder.status === 'WAITING_APPROVAL' || activeOrder.status === 'PENDING') && (
+                  <button
+                    type="button"
+                    className="btn-outline"
+                    style={{ padding: '4px 10px', fontSize: '12px', color: '#dc2626', borderColor: '#fca5a5', background: '#fef2f2', fontWeight: 800, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}
+                    onClick={handleCancelOrder}
+                  >
+                    <X size={13} /> Cancel
                   </button>
                 )}
               </div>
@@ -358,9 +363,17 @@ export default function ClientDispatchPage() {
                   <Radio size={24} className="pulse" />
                 </div>
                 <div style={{ fontWeight: 800, fontSize: '15px' }}>Broadcasting to Mobile Titan Units</div>
-                <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '4px' }}>
+                <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '4px', marginBottom: '12px' }}>
                   Nearby field technicians are reviewing your booking. Titan Unit will claim and start navigation shortly.
                 </div>
+                <button
+                  type="button"
+                  className="btn-outline"
+                  style={{ width: 'auto', padding: '6px 14px', fontSize: '12px', color: '#dc2626', borderColor: '#fca5a5', background: '#fff', fontWeight: 800, margin: '0 auto', display: 'inline-flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}
+                  onClick={handleCancelOrder}
+                >
+                  <X size={14} /> Cancel Dispatch Request
+                </button>
               </div>
             )}
 

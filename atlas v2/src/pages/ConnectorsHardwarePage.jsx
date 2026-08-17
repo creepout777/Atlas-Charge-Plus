@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Layers, Zap, Cpu, Plus, Edit3, Trash2, Lock, Archive, CheckCircle2, RotateCcw, Activity, ShieldCheck, AlertTriangle, RefreshCw, Thermometer, Droplet, Gauge, Wrench, Shield, Play } from 'lucide-react';
+import { Layers, Zap, Cpu, Plus, Edit3, Trash2, Lock, Archive, CheckCircle2, RotateCcw, Shield } from 'lucide-react';
 import { useData } from '../context/DataContext.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
 import Modal from '../components/layout/Modal.jsx';
@@ -23,14 +23,8 @@ export default function ConnectorsHardwarePage() {
   const isDispatcher = currentUser?.role === 'FLEET_DISPATCHER';
   const canManage = isSuperAdmin || isDispatcher;
 
-  const [activeTab, setActiveTab] = useState('diagnostics'); // 'diagnostics' | 'standards' | 'assemblies'
-
-  // --- Diagnostic Sweep State ---
-  const [runningTestId, setRunningTestId] = useState(null);
-  const [testStage, setTestStage] = useState(0);
-  const [testLogs, setTestLogs] = useState({});
-
-  // --- Modals State ---
+  // --- Modal States ---
+  // 1. Connector Standard Modals
   const [showAddConnModal, setShowAddConnModal] = useState(false);
   const [showEditConnModal, setShowEditConnModal] = useState(false);
   const [selectedConnId, setSelectedConnId] = useState(null);
@@ -41,6 +35,7 @@ export default function ConnectorsHardwarePage() {
   const [connCurrent, setConnCurrent] = useState(350);
   const [connChargingStandard, setConnChargingStandard] = useState('Combined Charging System 2');
 
+  // 2. Truck Connector Assembly Modals
   const [showAddTruckConnModal, setShowAddTruckConnModal] = useState(false);
   const [showEditTruckConnModal, setShowEditTruckConnModal] = useState(false);
   const [selectedTruckConnId, setSelectedTruckConnId] = useState(null);
@@ -49,60 +44,6 @@ export default function ConnectorsHardwarePage() {
   const [tcCableLength, setTcCableLength] = useState(6.5);
   const [tcMaxKw, setTcMaxKw] = useState(150);
   const [tcOperational, setTcOperational] = useState(true);
-
-  // --- Handlers for Diagnostic Tests ---
-  const handleRunDiagnostic = (tcId) => {
-    setRunningTestId(tcId);
-    setTestStage(1);
-    setTestLogs(prev => ({
-      ...prev,
-      [tcId]: ['[DIAGNOSTIC INITIATED] Connecting to Mobile Inverter & BMS Controller...']
-    }));
-
-    setTimeout(() => {
-      setTestStage(2);
-      setTestLogs(prev => ({
-        ...prev,
-        [tcId]: [...prev[tcId], '✓ R-ISO High-Voltage Isolation: 540 MΩ (Exceeds >100 MΩ requirement)']
-      }));
-    }, 800);
-
-    setTimeout(() => {
-      setTestStage(3);
-      setTestLogs(prev => ({
-        ...prev,
-        [tcId]: [...prev[tcId], '✓ Liquid Glycol Cooling Loop: 14.8 L/min @ 2.4 Bar differential pressure (Nominal)']
-      }));
-    }, 1600);
-
-    setTimeout(() => {
-      setTestStage(4);
-      setTestLogs(prev => ({
-        ...prev,
-        [tcId]: [
-          ...prev[tcId],
-          '✓ Contactor Actuation Latency: 18ms (Normal)',
-          '✓ Pilot Signal & ISO 15118 CAN Bus Handshake: PASSED (100% Ready)'
-        ]
-      }));
-    }, 2400);
-
-    setTimeout(() => {
-      setRunningTestId(null);
-      setTestStage(0);
-    }, 3200);
-  };
-
-  const handleToggleAssemblyHealth = async (tc) => {
-    const nextStatus = !tc.is_operational;
-    await updateTruckConnector(tc.id, {
-      truck_id: tc.truck_id,
-      connector_type_id: tc.connector_type_id,
-      cable_length_meters: tc.cable_length_meters,
-      max_kw_rating: tc.max_kw_rating,
-      is_operational: nextStatus,
-    });
-  };
 
   // --- Handlers for Connector Types ---
   const openAddConn = () => {
@@ -221,369 +162,195 @@ export default function ConnectorsHardwarePage() {
   };
 
   return (
-    <div style={{ maxWidth: '1100px', margin: '32px auto', padding: '0 20px' }}>
+    <div style={{ maxWidth: '960px', margin: '32px auto', padding: '0 20px' }}>
       {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <h1 style={{ fontSize: '24px', fontWeight: 900 }}>Rapid DC Hardware Health & Telemetry</h1>
+            <h1 style={{ fontSize: '24px', fontWeight: 900 }}>Charging Hardware & Connector Specs</h1>
             <span className="brand-pill" style={{ background: 'var(--emerald-light)', color: 'var(--emerald-darker)' }}>
-              <ShieldCheck size={13} /> {isSuperAdmin ? 'Executive Hardware Control' : 'Fleet Diagnostics'}
+              <Shield size={12} /> {isSuperAdmin ? 'Executive Hardware Control' : 'Fleet Hardware Specs'}
             </span>
           </div>
           <div style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>
-            High-voltage DC power electronics, liquid-cooled dispensers & live diagnostic monitoring
+            Physical connector protocols & mounted mobile dispensing assemblies
           </div>
         </div>
-
-        {/* Tab Switcher */}
-        <div style={{ display: 'flex', gap: '6px', background: 'var(--slate-100)', padding: '4px', borderRadius: 'var(--radius-md)' }}>
-          {[
-            { id: 'diagnostics', label: `Hardware Health (${truckConnectors.length} Units)` },
-            { id: 'assemblies', label: 'Mounted Assemblies' },
-            { id: 'standards', label: `Connector Protocols (${connectors.length})` },
-          ].map(tab => (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
-              style={{
-                padding: '6px 14px',
-                borderRadius: 'var(--radius-sm)',
-                fontSize: '12px',
-                fontWeight: 800,
-                border: 'none',
-                cursor: 'pointer',
-                background: activeTab === tab.id ? '#fff' : 'transparent',
-                color: activeTab === tab.id ? 'var(--emerald-darker)' : 'var(--text-secondary)',
-                boxShadow: activeTab === tab.id ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
-              }}
-            >
-              {tab.label}
-            </button>
-          ))}
-        </div>
+        {canManage && (
+          <button className="btn-emerald" style={{ width: 'auto', fontSize: '13px', padding: '8px 16px' }} onClick={openAddConn}>
+            <Plus size={15} /> Add Connector Standard
+          </button>
+        )}
       </div>
 
-      {/* ════════════════════════════════════════════════════════════════ */}
-      {/* TAB 1: RAPID DC HARDWARE HEALTH & DIAGNOSTICS                   */}
-      {/* ════════════════════════════════════════════════════════════════ */}
-      {activeTab === 'diagnostics' && (
-        <div>
-          {/* Quick Hardware Overview KPIs */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '14px', marginBottom: '24px' }}>
-            <div className="card-glass">
-              <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>ACTIVE DC DISPENSERS</div>
-              <div style={{ fontSize: '24px', fontWeight: 900, fontFamily: 'var(--font-mono)', color: 'var(--emerald-dark)' }}>
-                {truckConnectors.filter(t => t.is_operational).length} / {truckConnectors.length}
-              </div>
-              <div style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>150kW liquid-cooled units</div>
-            </div>
-
-            <div className="card-glass">
-              <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>AVG INVERTER TEMP</div>
-              <div style={{ fontSize: '24px', fontWeight: 900, fontFamily: 'var(--font-mono)', color: '#0284c7' }}>
-                44.2°C
-              </div>
-              <div style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>Optimal operating window (&lt;65°C)</div>
-            </div>
-
-            <div className="card-glass">
-              <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>COOLANT LOOP PRESSURE</div>
-              <div style={{ fontSize: '24px', fontWeight: 900, fontFamily: 'var(--font-mono)', color: 'var(--emerald-darker)' }}>
-                2.4 Bar
-              </div>
-              <div style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>14.8 L/min active circulation</div>
-            </div>
-
-            <div className="card-glass">
-              <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>HV ISOLATION (R-ISO)</div>
-              <div style={{ fontSize: '24px', fontWeight: 900, fontFamily: 'var(--font-mono)', color: 'var(--slate-800)' }}>
-                520 MΩ
-              </div>
-              <div style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>Exceeds ISO safety criteria</div>
-            </div>
+      {/* Grid of Global Connector Standards */}
+      {connectors.length === 0 ? (
+        <div className="card-glass" style={{ textAlign: 'center', padding: '40px 20px', color: 'var(--text-secondary)', marginBottom: '32px' }}>
+          <div style={{ width: '48px', height: '48px', background: 'var(--slate-100)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 12px', color: 'var(--text-muted)' }}>
+            <Cpu size={24} />
           </div>
-
-          {/* Detailed Hardware Units List */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-            {truckConnectors.map((tc) => {
-              const parentTruck = (trucks || []).find(t => t.id === tc.truck_id);
-              const parentConn = (connectors || []).find(c => c.id === tc.connector_type_id);
-              const isTesting = runningTestId === tc.id;
-              const logs = testLogs[tc.id] || [];
-
-              return (
-                <div key={tc.id} className="card-glass">
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '14px' }}>
-                    <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-                      <div style={{
-                        width: '42px',
-                        height: '42px',
-                        borderRadius: 'var(--radius-md)',
-                        background: tc.is_operational ? 'var(--emerald-light)' : 'var(--red-light)',
-                        color: tc.is_operational ? 'var(--emerald-darker)' : 'var(--red-primary)',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                      }}>
-                        <Zap size={22} />
-                      </div>
-                      <div>
-                        <div style={{ fontWeight: 800, fontSize: '17px' }}>
-                          {parentConn?.display_name || 'CCS2 Rapid Dispenser'} — {parentTruck?.display_name || 'Mobile Unit'}
-                        </div>
-                        <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
-                          Unit Code: <b>{parentTruck?.truck_code || 'TITAN-01'}</b> · Protocol: <b>{parentConn?.standard || 'CCS_COMBO2'}</b> · Rating: <b>{tc.max_kw_rating} kW Peak</b>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <span className="brand-pill" style={{
-                        background: tc.is_operational ? 'var(--emerald-light)' : 'var(--red-light)',
-                        color: tc.is_operational ? 'var(--emerald-darker)' : 'var(--red-primary)',
-                        fontWeight: 800
-                      }}>
-                        ● {tc.is_operational ? 'Hardware Healthy (100% OK)' : 'Service Isolated (Inspection Needed)'}
-                      </span>
-                      {canManage && (
-                        <button
-                          className="btn-outline"
-                          style={{ padding: '6px 12px', fontSize: '12px' }}
-                          onClick={() => handleToggleAssemblyHealth(tc)}
-                        >
-                          {tc.is_operational ? 'Isolate for Service' : 'Mark Operational'}
-                        </button>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Telemetry Sensor Grid */}
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '10px', marginBottom: '14px' }}>
-                    <div className="metric-card">
-                      <div style={{ fontSize: '10px', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                        <Thermometer size={12} /> INVERTER CORE
-                      </div>
-                      <div style={{ fontWeight: 800, fontSize: '14px', fontFamily: 'var(--font-mono)' }}>42.5°C</div>
-                      <div style={{ fontSize: '10px', color: 'var(--emerald-dark)' }}>● Optimal</div>
-                    </div>
-
-                    <div className="metric-card">
-                      <div style={{ fontSize: '10px', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                        <Droplet size={12} /> GLYCOL COOLANT
-                      </div>
-                      <div style={{ fontWeight: 800, fontSize: '14px', fontFamily: 'var(--font-mono)' }}>14.8 L/min</div>
-                      <div style={{ fontSize: '10px', color: 'var(--emerald-dark)' }}>● 2.4 Bar Loop</div>
-                    </div>
-
-                    <div className="metric-card">
-                      <div style={{ fontSize: '10px', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                        <Shield size={12} /> HV ISOLATION
-                      </div>
-                      <div style={{ fontWeight: 800, fontSize: '14px', fontFamily: 'var(--font-mono)' }}>540 MΩ</div>
-                      <div style={{ fontSize: '10px', color: 'var(--emerald-dark)' }}>● High Voltage Safe</div>
-                    </div>
-
-                    <div className="metric-card">
-                      <div style={{ fontSize: '10px', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                        <Gauge size={12} /> PIN WEAR
-                      </div>
-                      <div style={{ fontWeight: 800, fontSize: '14px', fontFamily: 'var(--font-mono)' }}>0.11 mΩ</div>
-                      <div style={{ fontSize: '10px', color: 'var(--emerald-dark)' }}>● Clean Contact</div>
-                    </div>
-
-                    <div className="metric-card">
-                      <div style={{ fontSize: '10px', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                        <Activity size={12} /> CAN BUS JITTER
-                      </div>
-                      <div style={{ fontWeight: 800, fontSize: '14px', fontFamily: 'var(--font-mono)' }}>1.2 ms</div>
-                      <div style={{ fontSize: '10px', color: 'var(--emerald-dark)' }}>● ISO 15118 Sync</div>
-                    </div>
-                  </div>
-
-                  {/* Diagnostic Trigger Bar */}
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--slate-50)', padding: '12px 14px', borderRadius: 'var(--radius-sm)' }}>
-                    <div style={{ fontSize: '12px', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                      <Activity size={14} color="var(--emerald-primary)" />
-                      <span>Liquid-cooled 6.5m cable assembly · Contactor cycle: <b>1,480 / 50,000</b></span>
-                    </div>
-
-                    <button
-                      className="btn-emerald"
-                      style={{ width: 'auto', padding: '6px 14px', fontSize: '12px' }}
-                      disabled={isTesting}
-                      onClick={() => handleRunDiagnostic(tc.id)}
-                    >
-                      {isTesting ? (
-                        <><RefreshCw size={13} className="spin" /> Testing Phase {testStage}/4...</>
-                      ) : (
-                        <><Play size={13} /> Run Live Hardware Self-Test</>
-                      )}
-                    </button>
-                  </div>
-
-                  {/* Live Diagnostic Stream Output */}
-                  {logs.length > 0 && (
-                    <div style={{ marginTop: '12px', background: '#0b1320', borderRadius: 'var(--radius-sm)', padding: '12px 14px', fontFamily: 'var(--font-mono)', fontSize: '11px', color: '#10b981', lineHeight: 1.6 }}>
-                      {logs.map((log, idx) => (
-                        <div key={idx} style={{ color: log.includes('PASSED') || log.includes('✓') ? '#10b981' : '#94a3b8' }}>
-                          {log}
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
+          <div style={{ fontWeight: 800, fontSize: '16px', marginBottom: '4px' }}>No Connector Standards Registered</div>
+          <div style={{ fontSize: '13px', marginBottom: '16px' }}>There are currently no charging connector standards configured in the database.</div>
+          {canManage && (
+            <button className="btn-emerald" style={{ width: 'auto', margin: '0 auto' }} onClick={openAddConn}>
+              <Plus size={15} /> Add First Connector Standard
+            </button>
+          )}
         </div>
-      )}
-
-      {/* ════════════════════════════════════════════════════════════════ */}
-      {/* TAB 2: MOUNTED ASSEMBLIES                                       */}
-      {/* ════════════════════════════════════════════════════════════════ */}
-      {activeTab === 'assemblies' && (
-        <div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-            <div>
-              <h3 style={{ fontSize: '18px', fontWeight: 800 }}>Mounted Mobile Truck Assemblies</h3>
-              <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>Physical cables installed on fleet mobile battery vehicles</div>
-            </div>
-            {isSuperAdmin && (
-              <button className="btn-emerald" style={{ width: 'auto', fontSize: '12px', padding: '6px 14px' }} onClick={openAddTruckConn}>
-                <Plus size={14} /> Mount Connector to Truck
-              </button>
-            )}
-          </div>
-
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px' }}>
-            {truckConnectors.map((tc) => {
-              const parentTruck = (trucks || []).find(t => t.id === tc.truck_id);
-              const parentConn = (connectors || []).find(c => c.id === tc.connector_type_id);
-              return (
-                <div key={tc.id} className="card-glass" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+      ) : (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '16px', marginBottom: '32px' }}>
+          {(connectors || []).map((c) => {
+            const isConnActive = c.is_active !== false;
+            return (
+              <div
+                key={c.id}
+                className="card-glass"
+                style={{
+                  opacity: isConnActive ? 1 : 0.72,
+                  border: isConnActive ? '1px solid var(--border-subtle)' : '1px dashed var(--slate-300)',
+                  transition: 'all 0.2s',
+                }}
+              >
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '14px' }}>
                   <div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                      <span className="brand-pill" style={{ background: 'var(--slate-100)', color: 'var(--slate-700)', fontSize: '10px' }}>
-                        {parentTruck ? parentTruck.truck_code : 'TRUCK-ASSEMBLY'}
-                      </span>
-                      <span className="brand-pill" style={{
-                        background: tc.is_operational ? 'var(--emerald-light)' : 'var(--red-light)',
-                        color: tc.is_operational ? 'var(--emerald-darker)' : 'var(--red-primary)',
-                        fontSize: '10px'
-                      }}>
-                        ● {tc.is_operational ? 'Operational' : 'Fault'}
-                      </span>
+                    <div style={{ fontWeight: 800, fontSize: '18px', color: isConnActive ? 'inherit' : 'var(--text-secondary)' }}>
+                      {c.display_name} {!isConnActive && <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--amber-primary)' }}>(Archived)</span>}
                     </div>
-                    <div style={{ fontWeight: 800, fontSize: '15px', marginBottom: '2px' }}>{parentConn?.display_name || 'CCS Fast Connector'}</div>
-                    <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginBottom: '10px' }}>
-                      Mounted on: <b>{parentTruck?.display_name || 'Atlas Mobile Unit'}</b>
-                    </div>
-
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginBottom: canManage ? '12px' : '0' }}>
-                      <div className="metric-card">
-                        <div style={{ fontSize: '10px', color: 'var(--text-muted)' }}>CABLE LENGTH</div>
-                        <div style={{ fontWeight: 800, fontSize: '13px' }}>{tc.cable_length_meters}m</div>
-                      </div>
-                      <div className="metric-card">
-                        <div style={{ fontSize: '10px', color: 'var(--text-muted)' }}>MAX RATING</div>
-                        <div style={{ fontWeight: 800, fontSize: '13px', color: 'var(--emerald-dark)' }}>{tc.max_kw_rating} kW</div>
-                      </div>
+                    <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
+                      Code: <code>{c.code}</code> · Standard: <b>{c.standard}</b>
                     </div>
                   </div>
-
-                  {canManage && (
-                    <div style={{ display: 'flex', gap: '6px', borderTop: '1px solid var(--border-subtle)', paddingTop: '10px' }}>
-                      <button className="btn-outline" style={{ flex: 1, padding: '4px 8px', fontSize: '11px' }} onClick={() => openEditTruckConn(tc)}>
-                        <Edit3 size={12} /> Edit Assembly
-                      </button>
-                      {isSuperAdmin && (
-                        <button className="btn-outline" style={{ padding: '4px 8px', fontSize: '11px', color: 'var(--red-primary)' }} onClick={() => handleDeleteTruckConn(tc)}>
-                          <Trash2 size={12} />
-                        </button>
-                      )}
-                    </div>
-                  )}
+                  <span className="brand-pill" style={{
+                    background: isConnActive ? 'var(--emerald-light)' : 'var(--slate-100)',
+                    color: isConnActive ? 'var(--emerald-darker)' : 'var(--slate-600)',
+                  }}>
+                    {isConnActive ? '● Active Standard' : '○ Archived'}
+                  </span>
                 </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
 
-      {/* ════════════════════════════════════════════════════════════════ */}
-      {/* TAB 3: CONNECTOR STANDARDS                                      */}
-      {/* ════════════════════════════════════════════════════════════════ */}
-      {activeTab === 'standards' && (
-        <div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-            <div>
-              <h3 style={{ fontSize: '18px', fontWeight: 800 }}>Charging Connector Standards</h3>
-              <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>Physical connector protocols configured in the system</div>
-            </div>
-            {isSuperAdmin && (
-              <button className="btn-emerald" style={{ width: 'auto', fontSize: '12px', padding: '6px 14px' }} onClick={openAddConn}>
-                <Plus size={14} /> Add Connector Standard
-              </button>
-            )}
-          </div>
-
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '16px' }}>
-            {(connectors || []).map((c) => {
-              const isConnActive = c.is_active !== false;
-              return (
-                <div key={c.id} className="card-glass" style={{ opacity: isConnActive ? 1 : 0.72 }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '14px' }}>
-                    <div>
-                      <div style={{ fontWeight: 800, fontSize: '18px' }}>{c.display_name}</div>
-                      <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
-                        Code: <code>{c.code}</code> · Standard: <b>{c.standard}</b>
-                      </div>
-                    </div>
-                    <span className="brand-pill" style={{
-                      background: isConnActive ? 'var(--emerald-light)' : 'var(--slate-100)',
-                      color: isConnActive ? 'var(--emerald-darker)' : 'var(--slate-600)',
-                    }}>
-                      {isConnActive ? '● Active' : '○ Archived'}
-                    </span>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px', marginBottom: canManage ? '14px' : '0' }}>
+                  <div className="metric-card">
+                    <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>MAX VOLTAGE</div>
+                    <div style={{ fontWeight: 800, fontSize: '15px', fontFamily: 'var(--font-mono)' }}>{c.max_voltage_v} V</div>
                   </div>
-
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px', marginBottom: isSuperAdmin ? '14px' : '0' }}>
-                    <div className="metric-card">
-                      <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>MAX VOLTAGE</div>
-                      <div style={{ fontWeight: 800, fontSize: '15px', fontFamily: 'var(--font-mono)' }}>{c.max_voltage_v} V</div>
-                    </div>
-                    <div className="metric-card">
-                      <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>MAX CURRENT</div>
-                      <div style={{ fontWeight: 800, fontSize: '15px', fontFamily: 'var(--font-mono)', color: 'var(--emerald-dark)' }}>{c.max_current_a} A</div>
-                    </div>
-                    <div className="metric-card">
-                      <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>PROTOCOL</div>
-                      <div style={{ fontWeight: 800, fontSize: '12px' }}>{c.standard?.includes('COMBO') ? 'DC Fast' : 'AC Type 2'}</div>
-                    </div>
+                  <div className="metric-card">
+                    <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>MAX CURRENT</div>
+                    <div style={{ fontWeight: 800, fontSize: '15px', fontFamily: 'var(--font-mono)', color: isConnActive ? 'var(--emerald-dark)' : 'var(--text-secondary)' }}>{c.max_current_a} A</div>
                   </div>
+                  <div className="metric-card">
+                    <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>PROTOCOL</div>
+                    <div style={{ fontWeight: 800, fontSize: '12px' }}>{c.standard?.includes('COMBO') ? 'DC Fast' : 'AC Type 2'}</div>
+                  </div>
+                </div>
 
-                  {isSuperAdmin && (
-                    <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', borderTop: '1px solid var(--border-subtle)', paddingTop: '10px' }}>
-                      <button className="btn-outline" style={{ padding: '6px 12px', fontSize: '12px' }} onClick={() => openEditConn(c)}>
-                        <Edit3 size={13} /> Edit
-                      </button>
-                      <button
-                        className="btn-outline"
-                        style={{ padding: '6px 12px', fontSize: '12px' }}
-                        onClick={() => handleToggleConnector(c)}
-                      >
-                        {isConnActive ? <><Archive size={13} /> Archive</> : <><RotateCcw size={13} /> Restore</>}
-                      </button>
-                      <button className="btn-outline" style={{ padding: '6px 10px', fontSize: '12px', color: 'var(--red-primary)' }} onClick={() => handleDeleteConn(c)}>
+                {canManage && (
+                  <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', borderTop: '1px solid var(--border-subtle)', paddingTop: '10px' }}>
+                    <button className="btn-outline" style={{ padding: '6px 12px', fontSize: '12px' }} onClick={() => openEditConn(c)}>
+                      <Edit3 size={13} /> Edit
+                    </button>
+                    <button
+                      className="btn-outline"
+                      style={{
+                        padding: '6px 12px',
+                        fontSize: '12px',
+                        color: isConnActive ? 'var(--amber-primary)' : 'var(--emerald-dark)',
+                        borderColor: isConnActive ? 'rgba(245, 158, 11, 0.3)' : 'rgba(16, 185, 129, 0.3)',
+                      }}
+                      onClick={() => handleToggleConnector(c)}
+                    >
+                      {isConnActive ? <><Archive size={13} /> Archive</> : <><RotateCcw size={13} /> Restore</>}
+                    </button>
+                    {isSuperAdmin && (
+                      <button className="btn-outline" style={{ padding: '6px 10px', fontSize: '12px', color: 'var(--red-primary)' }} onClick={() => handleDeleteConn(c)} title="Safely remove or archive">
                         <Trash2 size={13} />
                       </button>
-                    </div>
-                  )}
-                </div>
-              );
-            })}
+                    )}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Truck Connector Assemblies */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+        <div>
+          <h3 style={{ fontSize: '18px', fontWeight: 800 }}>Mounted Mobile Truck Assemblies</h3>
+          <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>Physical cables installed on fleet mobile battery vehicles</div>
+        </div>
+        {canManage && (
+          <button className="btn-emerald" style={{ width: 'auto', fontSize: '12px', padding: '6px 14px' }} onClick={openAddTruckConn}>
+            <Plus size={14} /> Mount Connector to Truck
+          </button>
+        )}
+      </div>
+
+      {truckConnectors.length === 0 ? (
+        <div className="card-glass" style={{ textAlign: 'center', padding: '40px 20px', color: 'var(--text-secondary)' }}>
+          <div style={{ width: '48px', height: '48px', background: 'var(--slate-100)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 12px', color: 'var(--text-muted)' }}>
+            <Layers size={24} />
           </div>
+          <div style={{ fontWeight: 800, fontSize: '16px', marginBottom: '4px' }}>No Mounted Assemblies</div>
+          <div style={{ fontSize: '13px', marginBottom: '16px' }}>There are currently no dispenser assemblies attached to mobile units in the database.</div>
+          {canManage && (
+            <button className="btn-emerald" style={{ width: 'auto', margin: '0 auto' }} onClick={openAddTruckConn}>
+              <Plus size={14} /> Mount First Connector
+            </button>
+          )}
+        </div>
+      ) : (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px' }}>
+          {(truckConnectors || []).map((tc) => {
+            const parentTruck = (trucks || []).find(t => t.id === tc.truck_id);
+            const parentConn = (connectors || []).find(c => c.id === tc.connector_type_id);
+            return (
+              <div key={tc.id} className="card-glass" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+                <div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                    <span className="brand-pill" style={{ background: 'var(--slate-100)', color: 'var(--slate-700)', fontSize: '10px' }}>
+                      {parentTruck ? parentTruck.truck_code : 'TRUCK-ASSEMBLY'}
+                    </span>
+                    <span className="brand-pill" style={{
+                      background: tc.is_operational ? 'var(--emerald-light)' : 'var(--red-light)',
+                      color: tc.is_operational ? 'var(--emerald-darker)' : 'var(--red-primary)',
+                      fontSize: '10px'
+                    }}>
+                      ● {tc.is_operational ? 'Operational' : 'Fault'}
+                    </span>
+                  </div>
+                  <div style={{ fontWeight: 800, fontSize: '15px', marginBottom: '2px' }}>{parentConn?.display_name || 'CCS Fast Connector'}</div>
+                  <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginBottom: '10px' }}>
+                    Mounted on: <b>{parentTruck?.display_name || 'Atlas Mobile Unit'}</b>
+                  </div>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginBottom: canManage ? '12px' : '0' }}>
+                    <div className="metric-card">
+                      <div style={{ fontSize: '10px', color: 'var(--text-muted)' }}>CABLE LENGTH</div>
+                      <div style={{ fontWeight: 800, fontSize: '13px' }}>{tc.cable_length_meters}m</div>
+                    </div>
+                    <div className="metric-card">
+                      <div style={{ fontSize: '10px', color: 'var(--text-muted)' }}>MAX RATING</div>
+                      <div style={{ fontWeight: 800, fontSize: '13px', color: 'var(--emerald-dark)' }}>{tc.max_kw_rating} kW</div>
+                    </div>
+                  </div>
+                </div>
+
+                {canManage && (
+                  <div style={{ display: 'flex', gap: '6px', borderTop: '1px solid var(--border-subtle)', paddingTop: '10px' }}>
+                    <button className="btn-outline" style={{ flex: 1, padding: '4px 8px', fontSize: '11px' }} onClick={() => openEditTruckConn(tc)}>
+                      <Edit3 size={12} /> Edit
+                    </button>
+                    {isSuperAdmin && (
+                      <button className="btn-outline" style={{ padding: '4px 8px', fontSize: '11px', color: 'var(--red-primary)' }} onClick={() => handleDeleteTruckConn(tc)}>
+                        <Trash2 size={12} /> Delete
+                      </button>
+                    )}
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </div>
       )}
 

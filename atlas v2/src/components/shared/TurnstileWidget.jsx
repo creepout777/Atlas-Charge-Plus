@@ -7,11 +7,22 @@ export default function TurnstileWidget({ onVerify, onExpire }) {
   const widgetIdRef = useRef(null);
 
   useEffect(() => {
-    let intervalId = null;
     let isMounted = true;
 
-    function renderTurnstile() {
+    // Register global callbacks for Cloudflare Turnstile declarative render
+    window._onTurnstileSuccess = (token) => {
+      if (isMounted && onVerify) onVerify(token);
+    };
+
+    window._onTurnstileExpired = () => {
+      if (isMounted && onExpire) onExpire();
+    };
+
+    function renderWidget() {
       if (!window.turnstile || !containerRef.current || widgetIdRef.current !== null) return;
+
+      // Check if Cloudflare already rendered into the element via data- attributes
+      if (containerRef.current.hasChildNodes()) return;
 
       try {
         widgetIdRef.current = window.turnstile.render(containerRef.current, {
@@ -24,34 +35,34 @@ export default function TurnstileWidget({ onVerify, onExpire }) {
           'expired-callback': () => {
             if (isMounted && onExpire) onExpire();
           },
-          'error-callback': (err) => {
-            console.error('Cloudflare Turnstile Error:', err);
+          'error-callback': (code) => {
+            console.error('Turnstile challenge error code:', code);
           },
         });
       } catch (err) {
-        console.error('Turnstile render failed:', err);
+        console.warn('Turnstile render attempt:', err);
       }
     }
 
     if (window.turnstile) {
-      renderTurnstile();
+      renderWidget();
     } else {
-      intervalId = setInterval(() => {
+      const timer = setInterval(() => {
         if (window.turnstile) {
-          renderTurnstile();
-          clearInterval(intervalId);
+          renderWidget();
+          clearInterval(timer);
         }
-      }, 100);
+      }, 150);
+      return () => clearInterval(timer);
     }
 
     return () => {
       isMounted = false;
-      if (intervalId) clearInterval(intervalId);
       if (widgetIdRef.current !== null && window.turnstile) {
         try {
           window.turnstile.remove(widgetIdRef.current);
         } catch {
-          // ignore cleanup errors
+          // ignore
         }
         widgetIdRef.current = null;
       }
@@ -60,7 +71,14 @@ export default function TurnstileWidget({ onVerify, onExpire }) {
 
   return (
     <div style={{ marginBottom: '16px', display: 'flex', justifyContent: 'center', width: '100%', minHeight: '65px' }}>
-      <div ref={containerRef} />
+      <div
+        ref={containerRef}
+        className="cf-turnstile"
+        data-sitekey={SITE_KEY}
+        data-callback="_onTurnstileSuccess"
+        data-expired-callback="_onTurnstileExpired"
+        data-theme="light"
+      />
     </div>
   );
 }

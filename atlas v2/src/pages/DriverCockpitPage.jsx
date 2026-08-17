@@ -310,34 +310,17 @@ export default function DriverCockpitPage() {
     return () => clearInterval(navGpsTimerRef.current);
   }, [myActiveJob?.status, myActiveJob?.target_lat, myActiveJob?.target_lng, currentTruck?.id]);
 
-  // 5. 150kW DC Charging Telemetry Simulator
+  // 5. Active Charging Telemetry Setup
   useEffect(() => {
     if (myActiveJob && myActiveJob.status === 'CHARGING') {
       const targetKw = currentTruck?.max_output_kw || 150;
       setChargingKw(targetKw);
-
-      simTimerRef.current = setInterval(() => {
-        setDeliveredKwh(prev => {
-          const next = parseFloat((prev + 0.42).toFixed(2));
-          logTelemetry({
-            order_id: myActiveJob.id,
-            recorded_at: new Date().toISOString(),
-            current_output_kw: parseFloat((targetKw + (Math.random() * 4 - 2)).toFixed(2)),
-            energy_deliv_kwh: next,
-            battery_pct: Math.min(100, Math.round(24 + (next / 40 * 76))),
-            port_temp_c: 38.5,
-          });
-          return next;
-        });
-        setBatteryPct(prev => Math.min(100, prev + 1));
-      }, 1000);
+      const pkgKwh = parseFloat(myActiveJob.target_kwh) || parseFloat(jobPackage?.target_kwh) || 35.0;
+      setDeliveredKwh(pkgKwh);
     } else {
-      clearInterval(simTimerRef.current);
       setChargingKw(0);
     }
-
-    return () => clearInterval(simTimerRef.current);
-  }, [myActiveJob?.status, currentTruck]);
+  }, [myActiveJob?.status, currentTruck, jobPackage]);
 
   // Actions
   const handleAcceptOrClaimSpecificJob = async (job) => {
@@ -634,27 +617,43 @@ export default function DriverCockpitPage() {
 
             {myActiveJob.status === 'CHARGING' && (
               <div>
-                <div style={{ display: 'flex', justifyContent: 'center', margin: '10px 0' }}>
-                  <SpeedometerGauge currentKw={chargingKw} maxKw={currentTruck?.max_output_kw || 150} />
+                <div style={{ background: 'linear-gradient(135deg, #0f172a, #1e293b)', padding: '16px', borderRadius: 'var(--radius-md)', border: '1px solid rgba(16, 185, 129, 0.3)', marginBottom: '14px', textAlign: 'center' }}>
+                  <div style={{ width: '44px', height: '44px', background: 'rgba(16, 185, 129, 0.15)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 10px', color: '#10b981' }}>
+                    <Zap size={24} className="pulse" />
+                  </div>
+                  <div style={{ fontWeight: 900, fontSize: '16px', color: '#fff' }}>⚡ 150kW DC Fast Charge In Progress</div>
+                  <div style={{ fontSize: '12px', color: 'var(--slate-400)', marginTop: '4px' }}>
+                    High-power CCS2 DC dispensing active. Unplug cable and confirm completion when done.
+                  </div>
                 </div>
 
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px', marginBottom: '16px' }}>
                   <div className="metric-card">
                     <div style={{ fontSize: '10px', color: 'var(--text-muted)' }}>DELIVERED</div>
-                    <div style={{ fontWeight: 900, fontSize: '17px', color: 'var(--emerald-dark)' }}>{deliveredKwh.toFixed(2)} kWh</div>
+                    <div style={{ fontWeight: 900, fontSize: '16px', color: 'var(--emerald-dark)' }}>
+                      {myActiveJob.target_kwh || jobPackage?.target_kwh || 35.0} kWh
+                    </div>
                   </div>
                   <div className="metric-card">
-                    <div style={{ fontSize: '10px', color: 'var(--text-muted)' }}>EST. COST</div>
-                    <div style={{ fontWeight: 900, fontSize: '17px', color: 'var(--slate-800)' }}>£{(5.00 + (deliveredKwh * 0.35)).toFixed(2)}</div>
+                    <div style={{ fontSize: '10px', color: 'var(--text-muted)' }}>TOTAL BILLED</div>
+                    <div style={{ fontWeight: 900, fontSize: '16px', color: 'var(--slate-800)' }}>
+                      £{myActiveJob.estimated_total_amount || '17.25'}
+                    </div>
                   </div>
                   <div className="metric-card">
-                    <div style={{ fontSize: '10px', color: 'var(--text-muted)' }}>EV BATTERY</div>
-                    <div style={{ fontWeight: 900, fontSize: '17px', color: '#0284c7' }}>{batteryPct}%</div>
+                    <div style={{ fontSize: '10px', color: 'var(--text-muted)' }}>CONNECTOR</div>
+                    <div style={{ fontWeight: 900, fontSize: '15px', color: '#0284c7' }}>
+                      CCS2 Rapid
+                    </div>
                   </div>
                 </div>
 
-                <button className="btn-emerald" style={{ background: '#dc2626', borderColor: '#b91c1c', fontSize: '15px', padding: '12px 0' }} onClick={handleCompleteCharge}>
-                  <Square size={18} /> Complete Session & Disconnect
+                <button
+                  className="btn-emerald"
+                  style={{ fontSize: '15px', padding: '14px 0', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
+                  onClick={handleCompleteCharge}
+                >
+                  <CheckCircle2 size={18} /> 🔌 Unplug Charger & Press Done
                 </button>
               </div>
             )}

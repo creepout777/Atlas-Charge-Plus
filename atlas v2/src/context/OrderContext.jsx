@@ -155,6 +155,29 @@ export function OrderProvider({ children }) {
     }
   };
 
+  // Cancel order (sets status to CANCELED)
+  const cancelOrder = async (orderId) => {
+    const prevList = [...ordersList];
+    setOrdersList(prev => prev.map(o => o.id === orderId ? { ...o, status: 'CANCELED' } : o));
+
+    try {
+      const { data, error } = await ordersService.updateOrder(orderId, { status: 'CANCELED' });
+      if (error) {
+        await ordersService.deleteOrder(orderId);
+      }
+      await fetchOrders();
+      return data;
+    } catch (e) {
+      try {
+        await ordersService.deleteOrder(orderId);
+        await fetchOrders();
+      } catch (err) {
+        setOrdersList(prevList);
+        throw err;
+      }
+    }
+  };
+
   // Telemetry stream
   const logTelemetry = async (logData) => {
     setTelemetryLogs(prev => [logData, ...prev.slice(0, 50)]);
@@ -195,6 +218,7 @@ export function OrderProvider({ children }) {
       createOrder,
       updateStatus,
       claimOrder,
+      cancelOrder,
       assignTruckToOrder,
       assignDriverToOrder,
       deleteOrder,

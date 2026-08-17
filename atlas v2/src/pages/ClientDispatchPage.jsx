@@ -27,10 +27,20 @@ export default function ClientDispatchPage() {
   const { ordersList, createOrder, updateStatus, deleteOrder, telemetryLogs } = useOrder();
   const { vehicles, packages, connectors, trucks, drivers, tariffs, addReview } = useData();
 
-  // Find this client's active order
+  // Find this client's active ongoing order
   const activeOrder = useMemo(() => {
     return ordersList.find(o => o.client_user_id === currentUser?.id && o.status !== 'COMPLETED' && o.status !== 'CANCELED') || null;
   }, [ordersList, currentUser]);
+
+  // Track recently completed order for this client
+  const [completedOrder, setCompletedOrder] = useState(null);
+
+  useEffect(() => {
+    const latestCompleted = ordersList.find(o => o.client_user_id === currentUser?.id && o.status === 'COMPLETED');
+    if (latestCompleted && !activeOrder) {
+      setCompletedOrder(latestCompleted);
+    }
+  }, [ordersList, currentUser, activeOrder]);
 
   const activePackages = packages.filter(p => p.is_active !== false);
   const activeConnectors = connectors.filter(c => c.is_active !== false);
@@ -41,7 +51,6 @@ export default function ClientDispatchPage() {
   const [targetAddress, setTargetAddress] = useState('45 Kensington High St, London W8 5ED');
   const [targetCoords, setTargetCoords] = useState([51.5014, -0.1918]);
 
-  const [showReviewModal, setShowReviewModal] = useState(false);
   const [reviewStars, setReviewStars] = useState(5);
   const [reviewComment, setReviewComment] = useState('');
   const [reviewSubmitted, setReviewSubmitted] = useState(false);
@@ -59,26 +68,23 @@ export default function ClientDispatchPage() {
     if (activeConnectors.length > 0 && !selectedConnector) setSelectedConnector(activeConnectors[0]);
   }, [packages, vehicles, connectors]);
 
+  // Target active or completed order
+  const targetSession = activeOrder || completedOrder;
+
   // Assigned Truck & Driver info
   const assignedTruck = useMemo(() => {
-    if (activeOrder?.assigned_truck_id) {
-      return trucks.find(t => t.id === activeOrder.assigned_truck_id) || trucks[0] || null;
+    if (targetSession?.assigned_truck_id) {
+      return trucks.find(t => t.id === targetSession.assigned_truck_id) || trucks[0] || null;
     }
     return trucks[0] || null;
-  }, [trucks, activeOrder]);
+  }, [trucks, targetSession]);
 
   const assignedDriver = useMemo(() => {
-    if (activeOrder?.assigned_driver_id) {
-      return drivers.find(d => d.user_id === activeOrder.assigned_driver_id) || drivers[0] || null;
+    if (targetSession?.assigned_driver_id) {
+      return drivers.find(d => d.user_id === targetSession.assigned_driver_id) || drivers[0] || null;
     }
     return drivers[0] || null;
-  }, [drivers, activeOrder]);
-
-  // Live telemetry for active charging
-  const latestTelemetry = useMemo(() => {
-    if (!activeOrder) return null;
-    return telemetryLogs.find(t => t.order_id === activeOrder.id) || null;
-  }, [telemetryLogs, activeOrder]);
+  }, [drivers, targetSession]);
 
   // Initialize Map
   useEffect(() => {
@@ -170,15 +176,9 @@ export default function ClientDispatchPage() {
     }
   }, [activeOrder, assignedTruck?.current_lat, assignedTruck?.current_lng]);
 
-  // Trigger Review modal on completion
-  useEffect(() => {
-    if (activeOrder && activeOrder.status === 'COMPLETED') {
-      setShowReviewModal(true);
-    }
-  }, [activeOrder?.status]);
-
   const handleDispatch = async () => {
     setIsSubmitting(true);
+    setCompletedOrder(null);
     const pkg = selectedPkg || activePackages[0] || packages[0];
     const veh = selectedVehicle || vehicles[0];
     const conn = selectedConnector || activeConnectors[0] || connectors[0];
@@ -212,16 +212,21 @@ export default function ClientDispatchPage() {
   const handleCancelOrder = async () => {
     if (!activeOrder) return;
     if (window.confirm('Are you sure you want to cancel this rapid charging dispatch request?')) {
-      await deleteOrder(activeOrder.id);
+      try {
+        await cancelOrder(activeOrder.id);
+      } catch (err) {
+        console.error('Cancel order error:', err);
+      }
     }
   };
 
   const handleReviewSubmit = async () => {
-    const veh = vehicles.find(v => v.id === activeOrder?.vehicle_id) || vehicles[0];
+    if (!targetSession) return;
+    const veh = vehicles.find(v => v.id === targetSession?.vehicle_id) || vehicles[0];
     await addReview({
-      order_id: activeOrder?.id,
-      truck_id: activeOrder?.assigned_truck_id || null,
-      driver_user_id: activeOrder?.assigned_driver_id || null,
+      order_id: targetSession?.id,
+      truck_id: targetSession?.assigned_truck_id || null,
+      driver_user_id: targetSession?.assigned_driver_id || null,
       rating_stars: reviewStars,
       feedback_tags: 'Rapid DC,Professional Tech,Clean Energy',
       comment: reviewComment || 'Outstanding on-demand EV charging service!',
@@ -229,10 +234,6 @@ export default function ClientDispatchPage() {
       vehicle_model: veh ? `${veh.make} ${veh.model}` : 'Electric Vehicle',
     });
     setReviewSubmitted(true);
-    setTimeout(() => {
-      setShowReviewModal(false);
-      setReviewSubmitted(false);
-    }, 1500);
   };
 
   const distanceToClient = useMemo(() => {
@@ -252,7 +253,8 @@ export default function ClientDispatchPage() {
 
       {/* Floating Dispatch & Status Drawer */}
       <MobileSheet>
-        {!activeOrder ? (
+        {/* CASE 1: No active order and no completed session -> Show Booking Form */}
+        {!activeOrder && !completedOrder ? (
           <div>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -326,13 +328,14 @@ export default function ClientDispatchPage() {
               <Zap size={18} /> {isSubmitting ? 'Locating Nearest Mobile Titan...' : 'Request Mobile DC Rapid Charge'}
             </button>
           </div>
-        ) : (
+        ) : activeOrder ? (
+          /* CASE 2: Ongoing Active Order */
           <div>
             {/* Active Dispatch Progress Bar */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
               <div>
                 <span className="brand-pill" style={{ background: 'var(--emerald-light)', color: 'var(--emerald-darker)', fontWeight: 800 }}>
-                  ● {activeOrder.status === 'WAITING_APPROVAL' ? 'Pairing Mobile Titan...' : activeOrder.status === 'EN_ROUTE' ? 'Technician En Route' : activeOrder.status === 'ARRIVED' ? 'Mobile Unit Arrived Outside' : activeOrder.status === 'CHARGING' ? '⚡ 150kW DC Active' : 'Session Completed'}
+                  ● {activeOrder.status === 'WAITING_APPROVAL' ? 'Pairing Mobile Titan...' : activeOrder.status === 'EN_ROUTE' ? 'Technician En Route' : activeOrder.status === 'ARRIVED' ? 'Mobile Unit Arrived Outside' : '⚡ 150kW DC Fast Charging Active'}
                 </span>
                 <div style={{ fontWeight: 900, fontSize: '17px', marginTop: '4px' }}>{activeOrder.target_address}</div>
               </div>
@@ -381,64 +384,125 @@ export default function ClientDispatchPage() {
               </div>
             )}
 
-            {/* Live Telemetry View during Charging */}
+            {/* Charging In Progress Card */}
             {activeOrder.status === 'CHARGING' && (
-              <div>
-                <div style={{ display: 'flex', justifyContent: 'center', margin: '10px 0' }}>
-                  <SpeedometerGauge currentKw={latestTelemetry?.current_output_kw || 149.4} maxKw={150} />
+              <div style={{ background: 'linear-gradient(135deg, rgba(16,185,129,0.1), rgba(6,182,212,0.08))', border: '1px solid rgba(16,185,129,0.3)', padding: '16px', borderRadius: 'var(--radius-md)', textAlign: 'center', marginBottom: '10px' }}>
+                <div style={{ width: '44px', height: '44px', background: 'var(--emerald-light)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 10px', color: 'var(--emerald-darker)' }}>
+                  <Zap size={24} className="pulse" />
                 </div>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px', marginBottom: '14px' }}>
+                <div style={{ fontWeight: 900, fontSize: '16px', color: 'var(--slate-900)' }}>⚡ High-Power 150kW DC Charging Active</div>
+                <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '4px', marginBottom: '12px' }}>
+                  Technician is dispensing {activeOrder.target_kwh || 35} kWh directly into your EV battery.
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
                   <div className="metric-card">
-                    <div style={{ fontSize: '10px', color: 'var(--text-muted)' }}>DELIVERED</div>
-                    <div style={{ fontWeight: 900, fontSize: '16px', color: 'var(--emerald-dark)' }}>{latestTelemetry?.energy_deliv_kwh || activeOrder.actual_kwh_delivered || '12.8'} kWh</div>
+                    <div style={{ fontSize: '10px', color: 'var(--text-muted)' }}>TARGET ENERGY</div>
+                    <div style={{ fontWeight: 900, fontSize: '16px', color: 'var(--emerald-dark)' }}>{activeOrder.target_kwh || 35} kWh</div>
                   </div>
                   <div className="metric-card">
-                    <div style={{ fontSize: '10px', color: 'var(--text-muted)' }}>BATTERY</div>
-                    <div style={{ fontWeight: 900, fontSize: '16px', color: '#0284c7' }}>{latestTelemetry?.vehicle_battery_pct || '48'}%</div>
-                  </div>
-                  <div className="metric-card">
-                    <div style={{ fontSize: '10px', color: 'var(--text-muted)' }}>POWER</div>
-                    <div style={{ fontWeight: 900, fontSize: '16px' }}>{latestTelemetry?.current_output_kw || '149.4'} kW</div>
+                    <div style={{ fontSize: '10px', color: 'var(--text-muted)' }}>TOTAL ESTIMATED</div>
+                    <div style={{ fontWeight: 900, fontSize: '16px', color: 'var(--slate-900)' }}>£{activeOrder.estimated_total_amount || '17.25'}</div>
                   </div>
                 </div>
               </div>
             )}
           </div>
-        )}
-      </MobileSheet>
-
-      {/* MODAL: Verified Review Submission */}
-      <Modal isOpen={showReviewModal} onClose={() => setShowReviewModal(false)} title="⭐ Rate Your Rapid DC Charge">
-        {reviewSubmitted ? (
-          <div style={{ textAlign: 'center', padding: '24px 0' }}>
-            <CheckCircle2 size={44} color="var(--emerald-primary)" style={{ margin: '0 auto 12px' }} />
-            <div style={{ fontWeight: 900, fontSize: '18px' }}>Thank You for Your Feedback!</div>
-            <div style={{ fontSize: '13px', color: 'var(--text-secondary)', marginTop: '4px' }}>Your review has been verified and published to the live testimonials feed.</div>
-          </div>
         ) : (
+          /* CASE 3: Completed Session -> Permanent Invoice Breakdown & Driver Rating */
           <div>
-            <div style={{ textAlign: 'center', marginBottom: '18px' }}>
-              <div style={{ fontSize: '13px', color: 'var(--text-secondary)', marginBottom: '8px' }}>How was your high-power DC charging experience with Atlas Charge?</div>
-              <StarRating value={reviewStars} onChange={setReviewStars} size={28} />
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
+              <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                <div style={{ width: '40px', height: '40px', background: 'var(--emerald-light)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--emerald-darker)' }}>
+                  <CheckCircle2 size={22} />
+                </div>
+                <div>
+                  <span className="brand-pill" style={{ background: 'var(--emerald-light)', color: 'var(--emerald-darker)', fontWeight: 800 }}>
+                    ● Charging Session Completed
+                  </span>
+                  <div style={{ fontWeight: 900, fontSize: '16px', marginTop: '2px' }}>
+                    {completedOrder?.target_address || 'London Central'}
+                  </div>
+                </div>
+              </div>
+              <span className="brand-pill" style={{ background: '#dcfce7', color: '#15803d', fontWeight: 900 }}>
+                ● PAID
+              </span>
             </div>
 
-            <div style={{ marginBottom: '18px' }}>
-              <label style={{ fontSize: '12px', fontWeight: 800, display: 'block', marginBottom: '4px' }}>Leave a comment (Optional)</label>
-              <textarea
-                className="metric-card"
-                style={{ width: '100%', minHeight: '80px', outline: 'none', resize: 'vertical', fontFamily: 'inherit' }}
-                placeholder="Lightning-fast 150kW boost, technician arrived right on time..."
-                value={reviewComment}
-                onChange={e => setReviewComment(e.target.value)}
-              />
+            {/* Official Invoice Card */}
+            <div style={{ background: '#f8fafc', border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-md)', padding: '14px', marginBottom: '16px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border-subtle)', paddingBottom: '8px', marginBottom: '10px' }}>
+                <div style={{ fontSize: '12px', fontWeight: 800, color: 'var(--slate-600)' }}>
+                  INVOICE: <code style={{ color: 'var(--slate-900)' }}>INV-{(completedOrder?.order_reference || completedOrder?.id)?.slice(0, 8)}</code>
+                </div>
+                <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
+                  {new Date(completedOrder?.created_at || Date.now()).toLocaleDateString()}
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', marginBottom: '6px' }}>
+                <span style={{ color: 'var(--text-secondary)' }}>Rapid Mobile Callout Fee:</span>
+                <span style={{ fontWeight: 700 }}>£{parseFloat(completedOrder?.estimated_callout_fee || 5.00).toFixed(2)}</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', marginBottom: '8px' }}>
+                <span style={{ color: 'var(--text-secondary)' }}>Energy Delivered ({completedOrder?.actual_kwh_delivered || completedOrder?.target_kwh || 35.0} kWh @ £0.35/kWh):</span>
+                <span style={{ fontWeight: 700 }}>£{parseFloat(completedOrder?.estimated_kwh_cost || 12.25).toFixed(2)}</span>
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '14px', fontWeight: 900, borderTop: '1px solid var(--border-subtle)', paddingTop: '8px', color: 'var(--emerald-darker)' }}>
+                <span>Total Amount Paid:</span>
+                <span>£{parseFloat(completedOrder?.estimated_total_amount || 17.25).toFixed(2)}</span>
+              </div>
             </div>
 
-            <button className="btn-emerald" style={{ fontSize: '15px', padding: '12px 0' }} onClick={handleReviewSubmit}>
-              Submit Verified Customer Review
+            {/* Driver Rating & Review Section */}
+            {!reviewSubmitted ? (
+              <div style={{ background: 'var(--slate-50)', padding: '14px', borderRadius: 'var(--radius-md)', marginBottom: '16px', border: '1px solid var(--border-subtle)' }}>
+                <div style={{ textAlign: 'center', marginBottom: '12px' }}>
+                  <div style={{ fontSize: '13px', fontWeight: 800, color: 'var(--slate-900)' }}>
+                    Rate Technician {assignedDriver?.full_name || 'Marcus Webb'}
+                  </div>
+                  <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginBottom: '8px' }}>
+                    How was your mobile rapid charging experience?
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'center' }}>
+                    <StarRating value={reviewStars} onChange={setReviewStars} size={26} />
+                  </div>
+                </div>
+
+                <textarea
+                  className="metric-card"
+                  style={{ width: '100%', minHeight: '60px', outline: 'none', resize: 'vertical', fontFamily: 'inherit', fontSize: '12px', marginBottom: '10px' }}
+                  placeholder="Technician arrived on time, super fast 150kW boost..."
+                  value={reviewComment}
+                  onChange={e => setReviewComment(e.target.value)}
+                />
+
+                <button className="btn-emerald" style={{ fontSize: '13px', padding: '8px 0' }} onClick={handleReviewSubmit}>
+                  ⭐ Submit Verified Review
+                </button>
+              </div>
+            ) : (
+              <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', padding: '12px', borderRadius: 'var(--radius-md)', textAlign: 'center', marginBottom: '16px', color: '#15803d' }}>
+                <div style={{ fontWeight: 800, fontSize: '13px' }}>✅ Thank You! Verified Review Submitted</div>
+              </div>
+            )}
+
+            {/* Book Another Charge Button */}
+            <button
+              className="btn-outline"
+              style={{ width: '100%', padding: '12px 0', fontSize: '14px', fontWeight: 800, borderColor: 'var(--emerald-primary)', color: 'var(--emerald-darker)' }}
+              onClick={() => {
+                setCompletedOrder(null);
+                setReviewSubmitted(false);
+              }}
+            >
+              ⚡ Request Another Rapid DC Charge
             </button>
           </div>
         )}
-      </Modal>
+      </MobileSheet>
     </div>
   );
 }

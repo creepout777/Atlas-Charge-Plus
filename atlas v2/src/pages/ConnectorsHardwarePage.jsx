@@ -20,11 +20,9 @@ export default function ConnectorsHardwarePage() {
 
   const { currentUser } = useAuth();
   const isSuperAdmin = currentUser?.role === 'SUPER_ADMIN';
-  const isDispatcher = currentUser?.role === 'FLEET_DISPATCHER';
-  const canManage = isSuperAdmin || isDispatcher;
 
   // --- Modal States ---
-  // 1. Connector Standard Modals
+  // 1. Connector Standard Modals (SuperAdmin Only)
   const [showAddConnModal, setShowAddConnModal] = useState(false);
   const [showEditConnModal, setShowEditConnModal] = useState(false);
   const [selectedConnId, setSelectedConnId] = useState(null);
@@ -35,7 +33,7 @@ export default function ConnectorsHardwarePage() {
   const [connCurrent, setConnCurrent] = useState(350);
   const [connChargingStandard, setConnChargingStandard] = useState('Combined Charging System 2');
 
-  // 2. Truck Connector Assembly Modals
+  // 2. Truck Connector Assembly Modals (SuperAdmin Only)
   const [showAddTruckConnModal, setShowAddTruckConnModal] = useState(false);
   const [showEditTruckConnModal, setShowEditTruckConnModal] = useState(false);
   const [selectedTruckConnId, setSelectedTruckConnId] = useState(null);
@@ -187,7 +185,8 @@ export default function ConnectorsHardwarePage() {
             Physical connector protocols & mounted mobile dispensing assemblies
           </div>
         </div>
-        {canManage && (
+        {/* ONLY SuperAdmin can add new global standards */}
+        {isSuperAdmin && (
           <button className="btn-emerald" style={{ width: 'auto', fontSize: '13px', padding: '8px 16px' }} onClick={openAddConn}>
             <Plus size={15} /> Add Connector Standard
           </button>
@@ -202,7 +201,7 @@ export default function ConnectorsHardwarePage() {
           </div>
           <div style={{ fontWeight: 800, fontSize: '16px', marginBottom: '4px' }}>No Connector Standards Registered</div>
           <div style={{ fontSize: '13px', marginBottom: '16px' }}>There are currently no charging connector standards configured in the database.</div>
-          {canManage && (
+          {isSuperAdmin && (
             <button className="btn-emerald" style={{ width: 'auto', margin: '0 auto' }} onClick={openAddConn}>
               <Plus size={15} /> Add First Connector Standard
             </button>
@@ -231,15 +230,31 @@ export default function ConnectorsHardwarePage() {
                       Code: <code>{c.code}</code> · Standard: <b>{c.standard}</b>
                     </div>
                   </div>
-                  <span className="brand-pill" style={{
-                    background: isConnActive ? 'var(--emerald-light)' : 'var(--slate-100)',
-                    color: isConnActive ? 'var(--emerald-darker)' : 'var(--slate-600)',
-                  }}>
-                    {isConnActive ? '● Active Standard' : '○ Archived'}
-                  </span>
+
+                  {/* Status Toggle Button: Accessible to both SuperAdmin and Dispatcher */}
+                  <button
+                    onClick={() => handleToggleConnector(c)}
+                    style={{
+                      background: isConnActive ? 'var(--emerald-light)' : 'var(--slate-100)',
+                      color: isConnActive ? 'var(--emerald-darker)' : 'var(--slate-600)',
+                      border: '1px solid ' + (isConnActive ? 'rgba(16, 185, 129, 0.4)' : 'rgba(148, 163, 184, 0.4)'),
+                      borderRadius: 'var(--radius-sm)',
+                      padding: '4px 10px',
+                      fontSize: '11px',
+                      fontWeight: 800,
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '5px',
+                      transition: 'all 0.15s ease-in-out'
+                    }}
+                    title="Click to toggle standard status (Active / Archived)"
+                  >
+                    <Power size={11} /> {isConnActive ? 'Active Standard' : 'Archived'}
+                  </button>
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px', marginBottom: canManage ? '14px' : '0' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px', marginBottom: isSuperAdmin ? '14px' : '0' }}>
                   <div className="metric-card">
                     <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>MAX VOLTAGE</div>
                     <div style={{ fontWeight: 800, fontSize: '15px', fontFamily: 'var(--font-mono)' }}>{c.max_voltage_v} V</div>
@@ -254,7 +269,8 @@ export default function ConnectorsHardwarePage() {
                   </div>
                 </div>
 
-                {canManage && (
+                {/* Edit & Delete Actions: Visible ONLY for SuperAdmin */}
+                {isSuperAdmin && (
                   <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', borderTop: '1px solid var(--border-subtle)', paddingTop: '10px' }}>
                     <button className="btn-outline" style={{ padding: '6px 12px', fontSize: '12px' }} onClick={() => openEditConn(c)}>
                       <Edit3 size={13} /> Edit
@@ -271,11 +287,9 @@ export default function ConnectorsHardwarePage() {
                     >
                       {isConnActive ? <><Archive size={13} /> Archive</> : <><RotateCcw size={13} /> Restore</>}
                     </button>
-                    {isSuperAdmin && (
-                      <button className="btn-outline" style={{ padding: '6px 10px', fontSize: '12px', color: 'var(--red-primary)' }} onClick={() => handleDeleteConn(c)} title="Safely remove or archive">
-                        <Trash2 size={13} />
-                      </button>
-                    )}
+                    <button className="btn-outline" style={{ padding: '6px 10px', fontSize: '12px', color: 'var(--red-primary)' }} onClick={() => handleDeleteConn(c)} title="Safely remove or archive">
+                      <Trash2 size={13} />
+                    </button>
                   </div>
                 )}
               </div>
@@ -290,7 +304,8 @@ export default function ConnectorsHardwarePage() {
           <h3 style={{ fontSize: '18px', fontWeight: 800 }}>Mounted Mobile Truck Assemblies</h3>
           <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>Physical cables installed on fleet mobile battery vehicles</div>
         </div>
-        {canManage && (
+        {/* ONLY SuperAdmin can mount new assemblies */}
+        {isSuperAdmin && (
           <button className="btn-emerald" style={{ width: 'auto', fontSize: '12px', padding: '6px 14px' }} onClick={openAddTruckConn}>
             <Plus size={14} /> Mount Connector to Truck
           </button>
@@ -304,7 +319,7 @@ export default function ConnectorsHardwarePage() {
           </div>
           <div style={{ fontWeight: 800, fontSize: '16px', marginBottom: '4px' }}>No Mounted Assemblies</div>
           <div style={{ fontSize: '13px', marginBottom: '16px' }}>There are currently no dispenser assemblies attached to mobile units in the database.</div>
-          {canManage && (
+          {isSuperAdmin && (
             <button className="btn-emerald" style={{ width: 'auto', margin: '0 auto' }} onClick={openAddTruckConn}>
               <Plus size={14} /> Mount First Connector
             </button>
@@ -323,9 +338,9 @@ export default function ConnectorsHardwarePage() {
                       {parentTruck ? parentTruck.truck_code : 'TRUCK-ASSEMBLY'}
                     </span>
                     
-                    {/* Status Toggle Button directly on the card */}
+                    {/* Status Toggle Button: Accessible to both SuperAdmin and Dispatcher */}
                     <button
-                      onClick={() => canManage && handleToggleAssemblyHealth(tc)}
+                      onClick={() => handleToggleAssemblyHealth(tc)}
                       style={{
                         background: tc.is_operational ? 'var(--emerald-light)' : 'var(--red-light)',
                         color: tc.is_operational ? 'var(--emerald-darker)' : 'var(--red-primary)',
@@ -334,12 +349,13 @@ export default function ConnectorsHardwarePage() {
                         border: '1px solid ' + (tc.is_operational ? 'rgba(16, 185, 129, 0.4)' : 'rgba(239, 68, 68, 0.4)'),
                         borderRadius: 'var(--radius-sm)',
                         padding: '3px 8px',
-                        cursor: canManage ? 'pointer' : 'default',
+                        cursor: 'pointer',
                         display: 'flex',
                         alignItems: 'center',
                         gap: '4px',
+                        transition: 'all 0.15s ease-in-out'
                       }}
-                      title={canManage ? 'Click to toggle hardware status' : ''}
+                      title="Click to toggle hardware status (Operational / Fault)"
                     >
                       <Power size={11} /> {tc.is_operational ? 'Operational' : 'Fault'}
                     </button>
@@ -349,7 +365,7 @@ export default function ConnectorsHardwarePage() {
                     Mounted on: <b>{parentTruck?.display_name || 'Atlas Mobile Unit'}</b>
                   </div>
 
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginBottom: canManage ? '12px' : '0' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginBottom: isSuperAdmin ? '12px' : '0' }}>
                     <div className="metric-card">
                       <div style={{ fontSize: '10px', color: 'var(--text-muted)' }}>CABLE LENGTH</div>
                       <div style={{ fontWeight: 800, fontSize: '13px' }}>{tc.cable_length_meters}m</div>
@@ -361,28 +377,15 @@ export default function ConnectorsHardwarePage() {
                   </div>
                 </div>
 
-                {canManage && (
+                {/* Edit & Delete Actions: Visible ONLY for SuperAdmin */}
+                {isSuperAdmin && (
                   <div style={{ display: 'flex', gap: '6px', borderTop: '1px solid var(--border-subtle)', paddingTop: '10px' }}>
                     <button className="btn-outline" style={{ flex: 1, padding: '4px 8px', fontSize: '11px' }} onClick={() => openEditTruckConn(tc)}>
                       <Edit3 size={12} /> Edit
                     </button>
-                    <button
-                      className="btn-outline"
-                      style={{
-                        padding: '4px 8px',
-                        fontSize: '11px',
-                        color: tc.is_operational ? 'var(--amber-primary)' : 'var(--emerald-dark)',
-                      }}
-                      onClick={() => handleToggleAssemblyHealth(tc)}
-                      title="Toggle Operational / Fault"
-                    >
-                      {tc.is_operational ? 'Set Fault' : 'Set Operational'}
+                    <button className="btn-outline" style={{ padding: '4px 8px', fontSize: '11px', color: 'var(--red-primary)' }} onClick={() => handleDeleteTruckConn(tc)}>
+                      <Trash2 size={12} /> Delete
                     </button>
-                    {isSuperAdmin && (
-                      <button className="btn-outline" style={{ padding: '4px 8px', fontSize: '11px', color: 'var(--red-primary)' }} onClick={() => handleDeleteTruckConn(tc)}>
-                        <Trash2 size={12} />
-                      </button>
-                    )}
                   </div>
                 )}
               </div>
@@ -391,129 +394,133 @@ export default function ConnectorsHardwarePage() {
         </div>
       )}
 
-      {/* --- MODALS --- */}
-      <Modal isOpen={showAddConnModal} onClose={() => setShowAddConnModal(false)} title="Register New Connector Standard">
-        <form onSubmit={handleAddConnSubmit}>
-          <div style={{ marginBottom: '12px' }}>
-            <label style={{ fontSize: '12px', fontWeight: 800, display: 'block', marginBottom: '4px' }}>Standard Code</label>
-            <input className="metric-card" style={{ width: '100%', outline: 'none' }} value={connCode} onChange={e => setConnCode(e.target.value)} required />
-          </div>
-          <div style={{ marginBottom: '12px' }}>
-            <label style={{ fontSize: '12px', fontWeight: 800, display: 'block', marginBottom: '4px' }}>Display Name</label>
-            <input className="metric-card" style={{ width: '100%', outline: 'none' }} value={connDisplayName} onChange={e => setConnDisplayName(e.target.value)} required />
-          </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '12px' }}>
-            <div>
-              <label style={{ fontSize: '12px', fontWeight: 800, display: 'block', marginBottom: '4px' }}>Max Voltage (V)</label>
-              <input className="metric-card" type="number" style={{ width: '100%', outline: 'none' }} value={connVoltage} onChange={e => setConnVoltage(e.target.value)} required />
-            </div>
-            <div>
-              <label style={{ fontSize: '12px', fontWeight: 800, display: 'block', marginBottom: '4px' }}>Max Current (A)</label>
-              <input className="metric-card" type="number" style={{ width: '100%', outline: 'none' }} value={connCurrent} onChange={e => setConnCurrent(e.target.value)} required />
-            </div>
-          </div>
-          <div style={{ marginBottom: '18px' }}>
-            <label style={{ fontSize: '12px', fontWeight: 800, display: 'block', marginBottom: '4px' }}>Charging Standard Description</label>
-            <input className="metric-card" style={{ width: '100%', outline: 'none' }} value={connChargingStandard} onChange={e => setConnChargingStandard(e.target.value)} required />
-          </div>
-          <button type="submit" className="btn-emerald">Save Connector Standard</button>
-        </form>
-      </Modal>
+      {/* --- MODALS (SuperAdmin Only) --- */}
+      {isSuperAdmin && (
+        <>
+          <Modal isOpen={showAddConnModal} onClose={() => setShowAddConnModal(false)} title="Register New Connector Standard">
+            <form onSubmit={handleAddConnSubmit}>
+              <div style={{ marginBottom: '12px' }}>
+                <label style={{ fontSize: '12px', fontWeight: 800, display: 'block', marginBottom: '4px' }}>Standard Code</label>
+                <input className="metric-card" style={{ width: '100%', outline: 'none' }} value={connCode} onChange={e => setConnCode(e.target.value)} required />
+              </div>
+              <div style={{ marginBottom: '12px' }}>
+                <label style={{ fontSize: '12px', fontWeight: 800, display: 'block', marginBottom: '4px' }}>Display Name</label>
+                <input className="metric-card" style={{ width: '100%', outline: 'none' }} value={connDisplayName} onChange={e => setConnDisplayName(e.target.value)} required />
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '12px' }}>
+                <div>
+                  <label style={{ fontSize: '12px', fontWeight: 800, display: 'block', marginBottom: '4px' }}>Max Voltage (V)</label>
+                  <input className="metric-card" type="number" style={{ width: '100%', outline: 'none' }} value={connVoltage} onChange={e => setConnVoltage(e.target.value)} required />
+                </div>
+                <div>
+                  <label style={{ fontSize: '12px', fontWeight: 800, display: 'block', marginBottom: '4px' }}>Max Current (A)</label>
+                  <input className="metric-card" type="number" style={{ width: '100%', outline: 'none' }} value={connCurrent} onChange={e => setConnCurrent(e.target.value)} required />
+                </div>
+              </div>
+              <div style={{ marginBottom: '18px' }}>
+                <label style={{ fontSize: '12px', fontWeight: 800, display: 'block', marginBottom: '4px' }}>Charging Standard Description</label>
+                <input className="metric-card" style={{ width: '100%', outline: 'none' }} value={connChargingStandard} onChange={e => setConnChargingStandard(e.target.value)} required />
+              </div>
+              <button type="submit" className="btn-emerald">Save Connector Standard</button>
+            </form>
+          </Modal>
 
-      <Modal isOpen={showEditConnModal} onClose={() => setShowEditConnModal(false)} title="Edit Connector Standard">
-        <form onSubmit={handleEditConnSubmit}>
-          <div style={{ marginBottom: '12px' }}>
-            <label style={{ fontSize: '12px', fontWeight: 800, display: 'block', marginBottom: '4px' }}>Display Name</label>
-            <input className="metric-card" style={{ width: '100%', outline: 'none' }} value={connDisplayName} onChange={e => setConnDisplayName(e.target.value)} required />
-          </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '12px' }}>
-            <div>
-              <label style={{ fontSize: '12px', fontWeight: 800, display: 'block', marginBottom: '4px' }}>Max Voltage (V)</label>
-              <input className="metric-card" type="number" style={{ width: '100%', outline: 'none' }} value={connVoltage} onChange={e => setConnVoltage(e.target.value)} required />
-            </div>
-            <div>
-              <label style={{ fontSize: '12px', fontWeight: 800, display: 'block', marginBottom: '4px' }}>Max Current (A)</label>
-              <input className="metric-card" type="number" style={{ width: '100%', outline: 'none' }} value={connCurrent} onChange={e => setConnCurrent(e.target.value)} required />
-            </div>
-          </div>
-          <div style={{ marginBottom: '18px' }}>
-            <label style={{ fontSize: '12px', fontWeight: 800, display: 'block', marginBottom: '4px' }}>Charging Standard Description</label>
-            <input className="metric-card" style={{ width: '100%', outline: 'none' }} value={connChargingStandard} onChange={e => setConnChargingStandard(e.target.value)} required />
-          </div>
-          <button type="submit" className="btn-emerald">Apply Updates</button>
-        </form>
-      </Modal>
+          <Modal isOpen={showEditConnModal} onClose={() => setShowEditConnModal(false)} title="Edit Connector Standard">
+            <form onSubmit={handleEditConnSubmit}>
+              <div style={{ marginBottom: '12px' }}>
+                <label style={{ fontSize: '12px', fontWeight: 800, display: 'block', marginBottom: '4px' }}>Display Name</label>
+                <input className="metric-card" style={{ width: '100%', outline: 'none' }} value={connDisplayName} onChange={e => setConnDisplayName(e.target.value)} required />
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '12px' }}>
+                <div>
+                  <label style={{ fontSize: '12px', fontWeight: 800, display: 'block', marginBottom: '4px' }}>Max Voltage (V)</label>
+                  <input className="metric-card" type="number" style={{ width: '100%', outline: 'none' }} value={connVoltage} onChange={e => setConnVoltage(e.target.value)} required />
+                </div>
+                <div>
+                  <label style={{ fontSize: '12px', fontWeight: 800, display: 'block', marginBottom: '4px' }}>Max Current (A)</label>
+                  <input className="metric-card" type="number" style={{ width: '100%', outline: 'none' }} value={connCurrent} onChange={e => setConnCurrent(e.target.value)} required />
+                </div>
+              </div>
+              <div style={{ marginBottom: '18px' }}>
+                <label style={{ fontSize: '12px', fontWeight: 800, display: 'block', marginBottom: '4px' }}>Charging Standard Description</label>
+                <input className="metric-card" style={{ width: '100%', outline: 'none' }} value={connChargingStandard} onChange={e => setConnChargingStandard(e.target.value)} required />
+              </div>
+              <button type="submit" className="btn-emerald">Apply Updates</button>
+            </form>
+          </Modal>
 
-      <Modal isOpen={showAddTruckConnModal} onClose={() => setShowAddTruckConnModal(false)} title="Mount Dispenser Connector to Truck">
-        <form onSubmit={handleAddTruckConnSubmit}>
-          <div style={{ marginBottom: '12px' }}>
-            <label style={{ fontSize: '12px', fontWeight: 800, display: 'block', marginBottom: '4px' }}>Target Mobile Unit</label>
-            <select className="metric-card" style={{ width: '100%', outline: 'none' }} value={tcTruckId} onChange={e => setTcTruckId(e.target.value)} required>
-              {(trucks || []).map(t => (
-                <option key={t.id} value={t.id}>{t.display_name} ({t.truck_code})</option>
-              ))}
-            </select>
-          </div>
-          <div style={{ marginBottom: '12px' }}>
-            <label style={{ fontSize: '12px', fontWeight: 800, display: 'block', marginBottom: '4px' }}>Connector Protocol</label>
-            <select className="metric-card" style={{ width: '100%', outline: 'none' }} value={tcConnTypeId} onChange={e => setTcConnTypeId(e.target.value)} required>
-              {(connectors || []).map(c => (
-                <option key={c.id} value={c.id}>{c.display_name} ({c.code})</option>
-              ))}
-            </select>
-          </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '18px' }}>
-            <div>
-              <label style={{ fontSize: '12px', fontWeight: 800, display: 'block', marginBottom: '4px' }}>Cable Length (Meters)</label>
-              <input className="metric-card" type="number" step="0.5" style={{ width: '100%', outline: 'none' }} value={tcCableLength} onChange={e => setTcCableLength(e.target.value)} required />
-            </div>
-            <div>
-              <label style={{ fontSize: '12px', fontWeight: 800, display: 'block', marginBottom: '4px' }}>Max Output Rating (kW)</label>
-              <input className="metric-card" type="number" style={{ width: '100%', outline: 'none' }} value={tcMaxKw} onChange={e => setTcMaxKw(e.target.value)} required />
-            </div>
-          </div>
-          <button type="submit" className="btn-emerald">Mount Connector Assembly</button>
-        </form>
-      </Modal>
+          <Modal isOpen={showAddTruckConnModal} onClose={() => setShowAddTruckConnModal(false)} title="Mount Dispenser Connector to Truck">
+            <form onSubmit={handleAddTruckConnSubmit}>
+              <div style={{ marginBottom: '12px' }}>
+                <label style={{ fontSize: '12px', fontWeight: 800, display: 'block', marginBottom: '4px' }}>Target Mobile Unit</label>
+                <select className="metric-card" style={{ width: '100%', outline: 'none' }} value={tcTruckId} onChange={e => setTcTruckId(e.target.value)} required>
+                  {(trucks || []).map(t => (
+                    <option key={t.id} value={t.id}>{t.display_name} ({t.truck_code})</option>
+                  ))}
+                </select>
+              </div>
+              <div style={{ marginBottom: '12px' }}>
+                <label style={{ fontSize: '12px', fontWeight: 800, display: 'block', marginBottom: '4px' }}>Connector Protocol</label>
+                <select className="metric-card" style={{ width: '100%', outline: 'none' }} value={tcConnTypeId} onChange={e => setTcConnTypeId(e.target.value)} required>
+                  {(connectors || []).map(c => (
+                    <option key={c.id} value={c.id}>{c.display_name} ({c.code})</option>
+                  ))}
+                </select>
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '18px' }}>
+                <div>
+                  <label style={{ fontSize: '12px', fontWeight: 800, display: 'block', marginBottom: '4px' }}>Cable Length (Meters)</label>
+                  <input className="metric-card" type="number" step="0.5" style={{ width: '100%', outline: 'none' }} value={tcCableLength} onChange={e => setTcCableLength(e.target.value)} required />
+                </div>
+                <div>
+                  <label style={{ fontSize: '12px', fontWeight: 800, display: 'block', marginBottom: '4px' }}>Max Output Rating (kW)</label>
+                  <input className="metric-card" type="number" style={{ width: '100%', outline: 'none' }} value={tcMaxKw} onChange={e => setTcMaxKw(e.target.value)} required />
+                </div>
+              </div>
+              <button type="submit" className="btn-emerald">Mount Connector Assembly</button>
+            </form>
+          </Modal>
 
-      <Modal isOpen={showEditTruckConnModal} onClose={() => setShowEditTruckConnModal(false)} title="Edit Mounted Connector Assembly">
-        <form onSubmit={handleEditTruckConnSubmit}>
-          <div style={{ marginBottom: '12px' }}>
-            <label style={{ fontSize: '12px', fontWeight: 800, display: 'block', marginBottom: '4px' }}>Target Mobile Unit</label>
-            <select className="metric-card" style={{ width: '100%', outline: 'none' }} value={tcTruckId} onChange={e => setTcTruckId(e.target.value)} required>
-              {(trucks || []).map(t => (
-                <option key={t.id} value={t.id}>{t.display_name} ({t.truck_code})</option>
-              ))}
-            </select>
-          </div>
-          <div style={{ marginBottom: '12px' }}>
-            <label style={{ fontSize: '12px', fontWeight: 800, display: 'block', marginBottom: '4px' }}>Connector Protocol</label>
-            <select className="metric-card" style={{ width: '100%', outline: 'none' }} value={tcConnTypeId} onChange={e => setTcConnTypeId(e.target.value)} required>
-              {(connectors || []).map(c => (
-                <option key={c.id} value={c.id}>{c.display_name} ({c.code})</option>
-              ))}
-            </select>
-          </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '12px' }}>
-            <div>
-              <label style={{ fontSize: '12px', fontWeight: 800, display: 'block', marginBottom: '4px' }}>Cable Length (Meters)</label>
-              <input className="metric-card" type="number" step="0.5" style={{ width: '100%', outline: 'none' }} value={tcCableLength} onChange={e => setTcCableLength(e.target.value)} required />
-            </div>
-            <div>
-              <label style={{ fontSize: '12px', fontWeight: 800, display: 'block', marginBottom: '4px' }}>Max Output Rating (kW)</label>
-              <input className="metric-card" type="number" style={{ width: '100%', outline: 'none' }} value={tcMaxKw} onChange={e => setTcMaxKw(e.target.value)} required />
-            </div>
-          </div>
-          <div style={{ marginBottom: '18px' }}>
-            <label style={{ fontSize: '12px', fontWeight: 800, display: 'block', marginBottom: '4px' }}>Hardware Status</label>
-            <select className="metric-card" style={{ width: '100%', outline: 'none' }} value={tcOperational ? 'true' : 'false'} onChange={e => setTcOperational(e.target.value === 'true')}>
-              <option value="true">🟢 Operational (Online & Ready)</option>
-              <option value="false">🔴 Fault / Maintenance (Offline)</option>
-            </select>
-          </div>
-          <button type="submit" className="btn-emerald">Save Assembly Updates</button>
-        </form>
-      </Modal>
+          <Modal isOpen={showEditTruckConnModal} onClose={() => setShowEditTruckConnModal(false)} title="Edit Mounted Connector Assembly">
+            <form onSubmit={handleEditTruckConnSubmit}>
+              <div style={{ marginBottom: '12px' }}>
+                <label style={{ fontSize: '12px', fontWeight: 800, display: 'block', marginBottom: '4px' }}>Target Mobile Unit</label>
+                <select className="metric-card" style={{ width: '100%', outline: 'none' }} value={tcTruckId} onChange={e => setTcTruckId(e.target.value)} required>
+                  {(trucks || []).map(t => (
+                    <option key={t.id} value={t.id}>{t.display_name} ({t.truck_code})</option>
+                  ))}
+                </select>
+              </div>
+              <div style={{ marginBottom: '12px' }}>
+                <label style={{ fontSize: '12px', fontWeight: 800, display: 'block', marginBottom: '4px' }}>Connector Protocol</label>
+                <select className="metric-card" style={{ width: '100%', outline: 'none' }} value={tcConnTypeId} onChange={e => setTcConnTypeId(e.target.value)} required>
+                  {(connectors || []).map(c => (
+                    <option key={c.id} value={c.id}>{c.display_name} ({c.code})</option>
+                  ))}
+                </select>
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '12px' }}>
+                <div>
+                  <label style={{ fontSize: '12px', fontWeight: 800, display: 'block', marginBottom: '4px' }}>Cable Length (Meters)</label>
+                  <input className="metric-card" type="number" step="0.5" style={{ width: '100%', outline: 'none' }} value={tcCableLength} onChange={e => setTcCableLength(e.target.value)} required />
+                </div>
+                <div>
+                  <label style={{ fontSize: '12px', fontWeight: 800, display: 'block', marginBottom: '4px' }}>Max Output Rating (kW)</label>
+                  <input className="metric-card" type="number" style={{ width: '100%', outline: 'none' }} value={tcMaxKw} onChange={e => setTcMaxKw(e.target.value)} required />
+                </div>
+              </div>
+              <div style={{ marginBottom: '18px' }}>
+                <label style={{ fontSize: '12px', fontWeight: 800, display: 'block', marginBottom: '4px' }}>Hardware Status</label>
+                <select className="metric-card" style={{ width: '100%', outline: 'none' }} value={tcOperational ? 'true' : 'false'} onChange={e => setTcOperational(e.target.value === 'true')}>
+                  <option value="true">🟢 Operational (Online & Ready)</option>
+                  <option value="false">🔴 Fault / Maintenance (Offline)</option>
+                </select>
+              </div>
+              <button type="submit" className="btn-emerald">Save Assembly Updates</button>
+            </form>
+          </Modal>
+        </>
+      )}
     </div>
   );
 }

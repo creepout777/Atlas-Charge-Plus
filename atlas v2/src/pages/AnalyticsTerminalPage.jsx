@@ -157,38 +157,6 @@ export default function AnalyticsTerminalPage() {
             </div>
           </div>
 
-          {/* Operational Readiness */}
-          <div className="card-glass">
-            <h3 style={{ fontSize: '16px', fontWeight: 800, marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <ShieldCheck size={18} color="var(--emerald-primary)" /> Fleet Operational Readiness & Standards
-            </h3>
-
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-              <div className="metric-card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <div>
-                  <div style={{ fontWeight: 800, fontSize: '14px' }}>CCS Rapid DC Dispensers</div>
-                  <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>150 kW High-Power Throughput</div>
-                </div>
-                <span className="brand-pill"><span className="status-dot emerald" style={{ width: '6px', height: '6px' }} /> Certified Safe</span>
-              </div>
-
-              <div className="metric-card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <div>
-                  <div style={{ fontWeight: 800, fontSize: '14px' }}>ISO 15118 Vehicle Handshake</div>
-                  <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>Plug & Charge Automated Communication</div>
-                </div>
-                <span className="brand-pill"><span className="status-dot emerald" style={{ width: '6px', height: '6px' }} /> 100% Success Rate</span>
-              </div>
-
-              <div className="metric-card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <div>
-                  <div style={{ fontWeight: 800, fontSize: '14px' }}>Energy Storage Buffer</div>
-                  <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>Mobile Battery Reserves & Inverters</div>
-                </div>
-                <span className="brand-pill"><span className="status-dot emerald" style={{ width: '6px', height: '6px' }} /> {fleetReadinessPct}% Fleet Ready</span>
-              </div>
-            </div>
-          </div>
         </div>
       )}
 

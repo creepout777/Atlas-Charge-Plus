@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Layers, Zap, Cpu, Plus, Edit3, Trash2, Lock, Archive, CheckCircle2, RotateCcw, Shield } from 'lucide-react';
+import { Layers, Zap, Cpu, Plus, Edit3, Trash2, Lock, Archive, CheckCircle2, RotateCcw, Shield, Power } from 'lucide-react';
 import { useData } from '../context/DataContext.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
 import Modal from '../components/layout/Modal.jsx';
@@ -126,6 +126,17 @@ export default function ConnectorsHardwarePage() {
     setTcMaxKw(tc.max_kw_rating);
     setTcOperational(tc.is_operational);
     setShowEditTruckConnModal(true);
+  };
+
+  const handleToggleAssemblyHealth = async (tc) => {
+    const nextStatus = !tc.is_operational;
+    await updateTruckConnector(tc.id, {
+      truck_id: tc.truck_id,
+      connector_type_id: tc.connector_type_id,
+      cable_length_meters: tc.cable_length_meters,
+      max_kw_rating: tc.max_kw_rating,
+      is_operational: nextStatus,
+    });
   };
 
   const handleAddTruckConnSubmit = async (e) => {
@@ -311,13 +322,27 @@ export default function ConnectorsHardwarePage() {
                     <span className="brand-pill" style={{ background: 'var(--slate-100)', color: 'var(--slate-700)', fontSize: '10px' }}>
                       {parentTruck ? parentTruck.truck_code : 'TRUCK-ASSEMBLY'}
                     </span>
-                    <span className="brand-pill" style={{
-                      background: tc.is_operational ? 'var(--emerald-light)' : 'var(--red-light)',
-                      color: tc.is_operational ? 'var(--emerald-darker)' : 'var(--red-primary)',
-                      fontSize: '10px'
-                    }}>
-                      ● {tc.is_operational ? 'Operational' : 'Fault'}
-                    </span>
+                    
+                    {/* Status Toggle Button directly on the card */}
+                    <button
+                      onClick={() => canManage && handleToggleAssemblyHealth(tc)}
+                      style={{
+                        background: tc.is_operational ? 'var(--emerald-light)' : 'var(--red-light)',
+                        color: tc.is_operational ? 'var(--emerald-darker)' : 'var(--red-primary)',
+                        fontSize: '11px',
+                        fontWeight: 800,
+                        border: '1px solid ' + (tc.is_operational ? 'rgba(16, 185, 129, 0.4)' : 'rgba(239, 68, 68, 0.4)'),
+                        borderRadius: 'var(--radius-sm)',
+                        padding: '3px 8px',
+                        cursor: canManage ? 'pointer' : 'default',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '4px',
+                      }}
+                      title={canManage ? 'Click to toggle hardware status' : ''}
+                    >
+                      <Power size={11} /> {tc.is_operational ? 'Operational' : 'Fault'}
+                    </button>
                   </div>
                   <div style={{ fontWeight: 800, fontSize: '15px', marginBottom: '2px' }}>{parentConn?.display_name || 'CCS Fast Connector'}</div>
                   <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginBottom: '10px' }}>
@@ -341,9 +366,21 @@ export default function ConnectorsHardwarePage() {
                     <button className="btn-outline" style={{ flex: 1, padding: '4px 8px', fontSize: '11px' }} onClick={() => openEditTruckConn(tc)}>
                       <Edit3 size={12} /> Edit
                     </button>
+                    <button
+                      className="btn-outline"
+                      style={{
+                        padding: '4px 8px',
+                        fontSize: '11px',
+                        color: tc.is_operational ? 'var(--amber-primary)' : 'var(--emerald-dark)',
+                      }}
+                      onClick={() => handleToggleAssemblyHealth(tc)}
+                      title="Toggle Operational / Fault"
+                    >
+                      {tc.is_operational ? 'Set Fault' : 'Set Operational'}
+                    </button>
                     {isSuperAdmin && (
                       <button className="btn-outline" style={{ padding: '4px 8px', fontSize: '11px', color: 'var(--red-primary)' }} onClick={() => handleDeleteTruckConn(tc)}>
-                        <Trash2 size={12} /> Delete
+                        <Trash2 size={12} />
                       </button>
                     )}
                   </div>
@@ -457,7 +494,7 @@ export default function ConnectorsHardwarePage() {
               ))}
             </select>
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '18px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '12px' }}>
             <div>
               <label style={{ fontSize: '12px', fontWeight: 800, display: 'block', marginBottom: '4px' }}>Cable Length (Meters)</label>
               <input className="metric-card" type="number" step="0.5" style={{ width: '100%', outline: 'none' }} value={tcCableLength} onChange={e => setTcCableLength(e.target.value)} required />
@@ -466,6 +503,13 @@ export default function ConnectorsHardwarePage() {
               <label style={{ fontSize: '12px', fontWeight: 800, display: 'block', marginBottom: '4px' }}>Max Output Rating (kW)</label>
               <input className="metric-card" type="number" style={{ width: '100%', outline: 'none' }} value={tcMaxKw} onChange={e => setTcMaxKw(e.target.value)} required />
             </div>
+          </div>
+          <div style={{ marginBottom: '18px' }}>
+            <label style={{ fontSize: '12px', fontWeight: 800, display: 'block', marginBottom: '4px' }}>Hardware Status</label>
+            <select className="metric-card" style={{ width: '100%', outline: 'none' }} value={tcOperational ? 'true' : 'false'} onChange={e => setTcOperational(e.target.value === 'true')}>
+              <option value="true">🟢 Operational (Online & Ready)</option>
+              <option value="false">🔴 Fault / Maintenance (Offline)</option>
+            </select>
           </div>
           <button type="submit" className="btn-emerald">Save Assembly Updates</button>
         </form>

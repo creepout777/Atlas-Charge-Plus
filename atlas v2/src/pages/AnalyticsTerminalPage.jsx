@@ -29,7 +29,7 @@ export default function AnalyticsTerminalPage() {
             Fleet Analytics & Energy Intelligence
           </h1>
           <span className="brand-pill">
-            <Activity size={12} /> Executive Intelligence
+            <Activity size={12} /> Live Fleet Operations
           </span>
         </div>
         <div style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>

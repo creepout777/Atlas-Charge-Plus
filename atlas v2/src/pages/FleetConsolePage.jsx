@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import { Shield, Truck, Zap, Activity, Layers, MapPin, Gauge, BatteryCharging, CheckCircle2, Clock, AlertTriangle, UserPlus, Search, Edit3, Plus, Trash2, Star, Eye, Lock, RefreshCw, Radio } from 'lucide-react';
+import { Shield, Truck, Zap, Activity, Layers, MapPin, Gauge, BatteryCharging, CheckCircle2, Clock, AlertTriangle, UserPlus, Search, Edit3, Plus, Trash2, Star, Eye, Lock, RefreshCw, Radio, ShieldCheck, Copy, Mail, Key } from 'lucide-react';
 import { useData } from '../context/DataContext.jsx';
 import { useOrder } from '../context/OrderContext.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
@@ -94,8 +94,8 @@ export default function FleetConsolePage() {
   const [driverTruckId, setDriverTruckId] = useState('');
   const [driverDutyStatus, setDriverDutyStatus] = useState('AVAILABLE');
   const [createdCredentials, setCreatedCredentials] = useState(null);
-
-  // 4. Edit Order Dispatch
+  const [showCredentialsModal, setShowCredentialsModal] = useState(false);
+  const [copiedCreds, setCopiedCreds] = useState(false);
   const [showEditOrderModal, setShowEditOrderModal] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [orderStatus, setOrderStatus] = useState('WAITING_APPROVAL');
@@ -296,12 +296,15 @@ export default function FleetConsolePage() {
         assigned_truck_id: driverTruckId || null,
         duty_status: driverDutyStatus,
       });
+      const assignedTruck = (trucks || []).find(t => t.id === driverTruckId);
       setCreatedCredentials({
         name: driverName,
         email: driverEmail,
         password: driverPassword,
+        truck: assignedTruck ? `${assignedTruck.display_name} (${assignedTruck.truck_code})` : 'Standby / Fleet Pool',
       });
       setShowAddDriverModal(false);
+      setShowCredentialsModal(true);
     } catch (err) {
       setErrorMessage(formatErrorMessage(err, 'driver'));
     }
@@ -742,6 +745,25 @@ export default function FleetConsolePage() {
                       </div>
                     </div>
 
+                    <div style={{ background: 'rgba(16, 185, 129, 0.08)', border: '1px solid rgba(16, 185, 129, 0.25)', padding: '8px 12px', borderRadius: 'var(--radius-sm)', marginBottom: '10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <div style={{ fontSize: '12px' }}>
+                        <span style={{ color: 'var(--text-muted)', fontWeight: 700 }}>LOGIN EMAIL: </span>
+                        <code style={{ fontWeight: 800, color: 'var(--slate-900)' }}>{drv.email}</code>
+                      </div>
+                      <button
+                        className="btn-outline"
+                        style={{ padding: '3px 8px', fontSize: '11px', background: '#fff' }}
+                        onClick={() => {
+                          navigator.clipboard.writeText(drv.email);
+                          setCopiedCreds(true);
+                          setTimeout(() => setCopiedCreds(false), 2000);
+                        }}
+                        title="Copy email to clipboard"
+                      >
+                        <Copy size={11} /> Copy Email
+                      </button>
+                    </div>
+
                     <div style={{ background: 'var(--slate-50)', padding: '10px 12px', borderRadius: 'var(--radius-sm)', marginBottom: canManageOperations ? '14px' : '0', fontSize: '12px' }}>
                       <div style={{ fontWeight: 800, color: 'var(--text-secondary)', marginBottom: '4px' }}>ASSIGNED MOBILE UNIT:</div>
                       {canManageOperations ? (
@@ -1017,6 +1039,64 @@ export default function FleetConsolePage() {
           </div>
           <button type="submit" className="btn-emerald">Complete Technician Onboarding</button>
         </form>
+      </Modal>
+
+      {/* MODAL: Generated Technician Credentials (SuperAdmin) */}
+      <Modal isOpen={showCredentialsModal && !!createdCredentials} onClose={() => setShowCredentialsModal(false)} title="🎉 Technician Account Created">
+        <div style={{ textAlign: 'center', marginBottom: '16px' }}>
+          <div style={{ width: '48px', height: '48px', background: 'var(--emerald-light)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 10px', color: 'var(--emerald-darker)' }}>
+            <ShieldCheck size={26} />
+          </div>
+          <div style={{ fontWeight: 900, fontSize: '17px' }}>{createdCredentials?.name} Onboarded Successfully</div>
+          <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>Provide these authentication credentials to the technician to sign into the Mobile Driver Cockpit.</div>
+        </div>
+
+        <div style={{ background: 'var(--slate-50)', padding: '14px 16px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-subtle)', marginBottom: '18px' }}>
+          <div style={{ marginBottom: '12px' }}>
+            <div style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 800 }}>TECHNICIAN LOGIN EMAIL</div>
+            <div style={{ fontWeight: 800, fontSize: '15px', fontFamily: 'var(--font-mono)', color: 'var(--slate-900)' }}>
+              {createdCredentials?.email}
+            </div>
+          </div>
+
+          <div style={{ marginBottom: '12px' }}>
+            <div style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 800 }}>LOGIN PASSWORD</div>
+            <div style={{ fontWeight: 900, fontSize: '16px', fontFamily: 'var(--font-mono)', color: 'var(--emerald-dark)' }}>
+              {createdCredentials?.password}
+            </div>
+          </div>
+
+          <div style={{ marginBottom: '12px' }}>
+            <div style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 800 }}>ASSIGNED MOBILE UNIT</div>
+            <div style={{ fontWeight: 800, fontSize: '13px', color: 'var(--slate-800)' }}>
+              {createdCredentials?.truck}
+            </div>
+          </div>
+
+          <div>
+            <div style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 800 }}>COCKPIT LOGIN URL</div>
+            <div style={{ fontSize: '13px', color: '#0284c7', fontWeight: 700 }}>
+              https://atlas-charge-plus.vercel.app/driver
+            </div>
+          </div>
+        </div>
+
+        <div style={{ display: 'flex', gap: '10px' }}>
+          <button
+            className="btn-outline"
+            style={{ flex: 1, padding: '10px', fontSize: '13px' }}
+            onClick={() => {
+              navigator.clipboard.writeText(`Atlas Charge Technician Login\nName: ${createdCredentials?.name}\nEmail: ${createdCredentials?.email}\nPassword: ${createdCredentials?.password}\nUnit: ${createdCredentials?.truck}\nURL: https://atlas-charge-plus.vercel.app/driver`);
+              setCopiedCreds(true);
+              setTimeout(() => setCopiedCreds(false), 2500);
+            }}
+          >
+            {copiedCreds ? '✅ Copied to Clipboard!' : '📋 Copy All Credentials'}
+          </button>
+          <button className="btn-emerald" style={{ flex: 1, padding: '10px', fontSize: '13px' }} onClick={() => setShowCredentialsModal(false)}>
+            Done & Close
+          </button>
+        </div>
       </Modal>
 
       {/* MODAL: Edit Technician Profile (Admin & Dispatcher) */}

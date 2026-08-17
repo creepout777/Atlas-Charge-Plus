@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Lock, CheckCircle2, AlertCircle, Check, ArrowRight } from 'lucide-react';
 import { authService } from '../services/api/authService';
 import { useAuth } from '../context/AuthContext';
+import { formatErrorMessage } from '../utils/errorHandler';
 
 export default function ResetPasswordPage() {
   const navigate = useNavigate();
@@ -32,7 +33,7 @@ export default function ResetPasswordPage() {
     setSuccessMsg('');
 
     if (password !== confirmPassword) {
-      setErrorMsg('Passwords do not match. Please re-enter.');
+      setErrorMsg('Passwords do not match. Please verify both password entries.');
       return;
     }
 
@@ -46,14 +47,14 @@ export default function ResetPasswordPage() {
       const { data, error } = await authService.updateUserPassword(password);
       if (error) throw error;
 
-      setSuccessMsg('Your password has been successfully updated! Redirecting to dashboard...');
+      setSuccessMsg('Your password has been successfully updated! Redirecting to your dashboard...');
       setTimeout(() => {
         if (currentUser?.role === 'DRIVER') navigate('/driver', { replace: true });
         else if (currentUser?.role === 'SUPER_ADMIN' || currentUser?.role === 'FLEET_DISPATCHER') navigate('/admin', { replace: true });
         else navigate('/', { replace: true });
       }, 1500);
     } catch (err) {
-      setErrorMsg(err.message || 'Failed to update password. Please request a new reset link.');
+      setErrorMsg(formatErrorMessage(err, 'password_reset'));
     } finally {
       setIsSubmitting(false);
     }

@@ -3,6 +3,7 @@ import { User, Bell, Gift, Shield, Check, Edit3, Save, X } from 'lucide-react';
 import { useAuth } from '../context/AuthContext.jsx';
 import { authService } from '../services/api/authService.js';
 import Modal from '../components/layout/Modal.jsx';
+import { formatErrorMessage } from '../utils/errorHandler.js';
 
 export default function ClientProfilePage() {
   const { currentUser, session, updateUserProfile } = useAuth();
@@ -51,6 +52,15 @@ export default function ClientProfilePage() {
     setTimeout(() => setCopied(false), 2000);
   };
 
+  const openEditModal = () => {
+    if (currentUser) {
+      setEditName(currentUser.full_name || '');
+      setEditPhone(currentUser.phone_number || '');
+    }
+    setStatusMsg('');
+    setShowEditModal(true);
+  };
+
   const handleSaveProfile = async (e) => {
     e.preventDefault();
     setSaving(true);
@@ -61,13 +71,13 @@ export default function ClientProfilePage() {
         phoneNumber: editPhone,
         notificationPreferences: { push: pushEnabled, email: emailEnabled }
       });
-      setStatusMsg('Profile successfully updated in PostgreSQL (public.users)!');
+      setStatusMsg('Profile successfully updated!');
       setTimeout(() => {
         setShowEditModal(false);
         setStatusMsg('');
       }, 1000);
     } catch (err) {
-      setStatusMsg('Error: ' + err.message);
+      setStatusMsg(formatErrorMessage(err, 'profile'));
     } finally {
       setSaving(false);
     }

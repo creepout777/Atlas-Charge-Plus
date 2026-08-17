@@ -6,6 +6,7 @@ import { useData } from '../context/DataContext.jsx';
 import { useOrder } from '../context/OrderContext.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
 import Modal from '../components/layout/Modal.jsx';
+import { formatErrorMessage } from '../utils/errorHandler';
 
 export default function FleetConsolePage() {
   const { ordersList, updateStatus, assignTruckToOrder, assignDriverToOrder, deleteOrder } = useOrder();
@@ -169,7 +170,7 @@ export default function FleetConsolePage() {
       });
       setShowEditTruckModal(false);
     } catch (err) {
-      setErrorMessage('Error updating mobile unit: ' + err.message);
+      setErrorMessage(formatErrorMessage(err, 'fleet'));
     }
   };
 
@@ -191,7 +192,7 @@ export default function FleetConsolePage() {
       });
       setShowAddTruckModal(false);
     } catch (err) {
-      setErrorMessage('Error commissioning unit: ' + err.message);
+      setErrorMessage(formatErrorMessage(err, 'unit_commission'));
     }
   };
 
@@ -253,7 +254,7 @@ export default function FleetConsolePage() {
       });
       setShowAddDriverModal(false);
     } catch (err) {
-      setErrorMessage('Error registering technician: ' + err.message);
+      setErrorMessage(formatErrorMessage(err, 'driver'));
     }
   };
 
@@ -274,7 +275,7 @@ export default function FleetConsolePage() {
       });
       setShowEditDriverModal(false);
     } catch (err) {
-      setErrorMessage('Error saving driver profile: ' + err.message);
+      setErrorMessage(formatErrorMessage(err, 'driver'));
     }
   };
 

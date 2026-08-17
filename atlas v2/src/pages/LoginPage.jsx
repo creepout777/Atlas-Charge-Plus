@@ -4,6 +4,7 @@ import { UserCheck, Shield, Truck, Zap, Lock, Mail, Phone, User, AlertCircle, Ch
 import { useAuth } from '../context/AuthContext';
 import { authService } from '../services/api/authService';
 import TurnstileWidget from '../components/shared/TurnstileWidget';
+import { formatErrorMessage } from '../utils/errorHandler';
 
 const MAX_FAILED_ATTEMPTS = 5;
 const LOCKOUT_SECONDS = 60;
@@ -135,11 +136,12 @@ export default function LoginPage() {
         }, 300);
       }
     } catch (err) {
-      const errorText = err.message || 'Authentication failed';
-      setErrorMsg(errorText);
+      const rawText = err.message || '';
+      const friendlyError = formatErrorMessage(err, 'auth');
+      setErrorMsg(friendlyError);
 
       // Check if email confirmation error
-      if (errorText.toLowerCase().includes('email not confirmed') || errorText.toLowerCase().includes('not verified')) {
+      if (rawText.toLowerCase().includes('email not confirmed') || rawText.toLowerCase().includes('not verified')) {
         setUnconfirmedEmail(email);
       } else {
         // Increment brute-force failure count
@@ -147,7 +149,7 @@ export default function LoginPage() {
         setFailedAttempts(newCount);
         if (newCount >= MAX_FAILED_ATTEMPTS) {
           setLockoutTimeLeft(LOCKOUT_SECONDS);
-          setErrorMsg(`Too many consecutive failed attempts. Security lockout active for ${LOCKOUT_SECONDS} seconds.`);
+          setErrorMsg(`Too many consecutive failed attempts. For your security, this form is locked for ${LOCKOUT_SECONDS} seconds.`);
         }
       }
     } finally {
@@ -160,10 +162,10 @@ export default function LoginPage() {
     setResendingEmail(true);
     try {
       await authService.resendConfirmationEmail(unconfirmedEmail);
-      setSuccessMsg(`Confirmation email resent to ${unconfirmedEmail}. Please check your inbox.`);
+      setSuccessMsg(`Verification email resent to ${unconfirmedEmail}. Please check your inbox.`);
       setErrorMsg('');
     } catch (err) {
-      setErrorMsg('Failed to resend confirmation: ' + err.message);
+      setErrorMsg(formatErrorMessage(err, 'email'));
     } finally {
       setResendingEmail(false);
     }
@@ -177,7 +179,7 @@ export default function LoginPage() {
       await switchRole(demoRole);
       navigate(path, { replace: true });
     } catch (err) {
-      setErrorMsg(err.message || 'Login failed');
+      setErrorMsg(formatErrorMessage(err, 'auth'));
     } finally {
       setIsSubmitting(false);
     }

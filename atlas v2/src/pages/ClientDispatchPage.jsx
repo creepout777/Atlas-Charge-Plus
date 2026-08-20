@@ -24,7 +24,7 @@ function calculateDistanceKm(lat1, lon1, lat2, lon2) {
 
 export default function ClientDispatchPage() {
   const { currentUser } = useAuth();
-  const { ordersList, createOrder, updateStatus, deleteOrder, telemetryLogs } = useOrder();
+  const { ordersList, createOrder, updateStatus, cancelOrder, deleteOrder, telemetryLogs } = useOrder();
   const { vehicles, packages, connectors, trucks, drivers, tariffs, addReview } = useData();
 
   // Find this client's active ongoing order
@@ -35,16 +35,32 @@ export default function ClientDispatchPage() {
   // Track dismissed completed order IDs so user can book fresh charges
   const [dismissedOrderIds, setDismissedOrderIds] = useState(new Set());
   const [completedOrder, setCompletedOrder] = useState(null);
+  const initialDismissRef = useRef(false);
+
+  // Dismiss historical completed orders on initial load so login shows Request Dispatch form
+  useEffect(() => {
+    if (ordersList.length > 0 && currentUser?.id && !initialDismissRef.current) {
+      initialDismissRef.current = true;
+      const historicalCompleted = ordersList
+        .filter(o => o.client_user_id === currentUser.id && o.status === 'COMPLETED')
+        .map(o => o.id);
+      if (historicalCompleted.length > 0) {
+        setDismissedOrderIds(prev => new Set([...prev, ...historicalCompleted]));
+      }
+    }
+  }, [ordersList, currentUser]);
 
   useEffect(() => {
-    const latestCompleted = ordersList.find(o =>
-      o.client_user_id === currentUser?.id &&
-      o.status === 'COMPLETED' &&
-      !dismissedOrderIds.has(o.id)
-    );
+    // Pick the MOST RECENT completed order for this client that hasn't been dismissed
+    const userCompleted = ordersList
+      .filter(o => o.client_user_id === currentUser?.id && o.status === 'COMPLETED' && !dismissedOrderIds.has(o.id))
+      .sort((a, b) => new Date(b.created_at || Date.now()) - new Date(a.created_at || Date.now()));
+
+    const latestCompleted = userCompleted[0] || null;
+
     if (latestCompleted && !activeOrder) {
       setCompletedOrder(latestCompleted);
-    } else if (!latestCompleted) {
+    } else {
       setCompletedOrder(null);
     }
   }, [ordersList, currentUser, activeOrder, dismissedOrderIds]);
@@ -183,11 +199,16 @@ export default function ClientDispatchPage() {
     }
   }, [activeOrder, assignedTruck?.current_lat, assignedTruck?.current_lng]);
 
-  const handleRequestAnotherCharge = () => {
-    if (completedOrder?.id) {
-      setDismissedOrderIds(prev => new Set([...prev, completedOrder.id]));
-    }
+  const dismissAllCompletedOrders = () => {
+    const allCompletedIds = ordersList
+      .filter(o => o.client_user_id === currentUser?.id && o.status === 'COMPLETED')
+      .map(o => o.id);
+    setDismissedOrderIds(prev => new Set([...prev, ...allCompletedIds]));
     setCompletedOrder(null);
+  };
+
+  const handleRequestAnotherCharge = () => {
+    dismissAllCompletedOrders();
     setReviewSubmitted(false);
     setReviewStars(5);
     setReviewComment('');
@@ -195,10 +216,7 @@ export default function ClientDispatchPage() {
 
   const handleDispatch = async () => {
     setIsSubmitting(true);
-    if (completedOrder?.id) {
-      setDismissedOrderIds(prev => new Set([...prev, completedOrder.id]));
-    }
-    setCompletedOrder(null);
+    dismissAllCompletedOrders();
     const pkg = selectedPkg || activePackages[0] || packages[0];
     const veh = selectedVehicle || vehicles[0];
     const conn = selectedConnector || activeConnectors[0] || connectors[0];

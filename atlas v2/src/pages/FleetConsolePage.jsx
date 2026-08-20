@@ -378,7 +378,7 @@ export default function FleetConsolePage() {
   return (
     <div style={{ maxWidth: '1200px', margin: '28px auto', padding: '0 20px' }}>
       {/* Top Banner & Mode */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+      <div className="dashboard-header">
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <h1 style={{ fontSize: '24px', fontWeight: 900 }}>Fleet Operations Console</h1>
@@ -396,7 +396,7 @@ export default function FleetConsolePage() {
         </div>
 
         {/* Tab Navigation */}
-        <div style={{ display: 'flex', gap: '6px', background: 'var(--slate-100)', padding: '4px', borderRadius: 'var(--radius-md)' }}>
+        <div className="tab-bar">
           {[
             { id: 'overview', label: 'Fleet Map' },
             { id: 'trucks', label: `Mobile Units (${trucks.length})` },
@@ -417,6 +417,7 @@ export default function FleetConsolePage() {
                 background: activeTab === tab.id ? '#fff' : 'transparent',
                 color: activeTab === tab.id ? 'var(--emerald-darker)' : 'var(--text-secondary)',
                 boxShadow: activeTab === tab.id ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
+                whiteSpace: 'nowrap'
               }}
             >
               {tab.label}
@@ -445,7 +446,7 @@ export default function FleetConsolePage() {
       )}
 
       {/* Metrics Row */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '14px', marginBottom: '24px' }}>
+      <div className="responsive-grid-4" style={{ marginBottom: '24px' }}>
         <div className="card-glass">
           <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>ACTIVE DISPATCHES</div>
           <div style={{ fontSize: '24px', fontWeight: 900, fontFamily: 'var(--font-mono)', color: 'var(--emerald-dark)' }}>
@@ -481,8 +482,8 @@ export default function FleetConsolePage() {
 
       {/* TAB 1: OVERVIEW & MAP */}
       {activeTab === 'overview' && (
-        <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '20px' }}>
-          <div className="card-glass" style={{ padding: 0, overflow: 'hidden', height: '480px', position: 'relative' }}>
+        <div className="grid-sidebar-layout">
+          <div className="card-glass" style={{ padding: 0, overflow: 'hidden', minHeight: '360px', height: '480px', position: 'relative' }}>
             <div ref={mapContainerRef} style={{ width: '100%', height: '100%' }} />
           </div>
 
@@ -548,7 +549,7 @@ export default function FleetConsolePage() {
       {/* TAB 2: MOBILE CHARGING UNITS */}
       {activeTab === 'trucks' && (
         <div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+          <div className="card-header-flex">
             <div>
               <h3 style={{ fontSize: '18px', fontWeight: 800 }}>Mobile Charging Units</h3>
               <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
@@ -576,7 +577,7 @@ export default function FleetConsolePage() {
               )}
             </div>
           ) : (
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+            <div className="responsive-grid-2">
               {(trucks || []).map((truck) => {
                 const statusMeta = TRUCK_STATUS_OPTIONS.find(o => o.value === truck.operational_status) || TRUCK_STATUS_OPTIONS[0];
                 return (
@@ -659,7 +660,7 @@ export default function FleetConsolePage() {
       {/* TAB 3: TECHNICIANS & DRIVERS */}
       {activeTab === 'drivers' && (
         <div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+          <div className="card-header-flex">
             <div>
               <h3 style={{ fontSize: '18px', fontWeight: 800 }}>Fleet Field Technicians</h3>
               <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
@@ -687,14 +688,14 @@ export default function FleetConsolePage() {
               )}
             </div>
           ) : (
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+            <div className="responsive-grid-2">
               {(drivers || []).map((drv) => {
                 const assignedTruck = (trucks || []).find(t => t.id === drv.assigned_truck_id);
                 const dutyMeta = DRIVER_STATUS_OPTIONS.find(o => o.value === drv.duty_status) || DRIVER_STATUS_OPTIONS[0];
 
                 return (
                   <div key={drv.user_id} className="card-glass">
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px', flexWrap: 'wrap', gap: '8px' }}>
                       <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
                         <div style={{ width: '42px', height: '42px', background: 'var(--emerald-light)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, color: 'var(--emerald-darker)' }}>
                           {drv.full_name?.charAt(0) || 'D'}
@@ -733,7 +734,7 @@ export default function FleetConsolePage() {
                       )}
                     </div>
 
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px', marginBottom: '14px' }}>
+                    <div className="card-specs-grid">
                       <div className="metric-card">
                         <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>RATING</div>
                         <div style={{ fontWeight: 800, fontSize: '14px', color: '#f59e0b', display: 'flex', alignItems: 'center', gap: '2px' }}>
@@ -750,8 +751,8 @@ export default function FleetConsolePage() {
                       </div>
                     </div>
 
-                    <div style={{ background: 'rgba(16, 185, 129, 0.08)', border: '1px solid rgba(16, 185, 129, 0.25)', padding: '8px 12px', borderRadius: 'var(--radius-sm)', marginBottom: '10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <div style={{ fontSize: '12px' }}>
+                    <div style={{ background: 'rgba(16, 185, 129, 0.08)', border: '1px solid rgba(16, 185, 129, 0.25)', padding: '8px 12px', borderRadius: 'var(--radius-sm)', marginBottom: '10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '6px' }}>
+                      <div style={{ fontSize: '12px', overflowWrap: 'anywhere' }}>
                         <span style={{ color: 'var(--text-muted)', fontWeight: 700 }}>LOGIN EMAIL: </span>
                         <code style={{ fontWeight: 800, color: 'var(--slate-900)' }}>{drv.email}</code>
                       </div>
@@ -791,7 +792,7 @@ export default function FleetConsolePage() {
                     </div>
 
                     {canManageOperations && (
-                      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', borderTop: '1px solid var(--border-subtle)', paddingTop: '10px' }}>
+                      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', borderTop: '1px solid var(--border-subtle)', paddingTop: '10px', flexWrap: 'wrap' }}>
                         <button className="btn-outline" style={{ padding: '6px 12px', fontSize: '12px' }} onClick={() => openEditDriver(drv)}>
                           <Edit3 size={13} /> Edit Profile & License
                         </button>
@@ -813,7 +814,7 @@ export default function FleetConsolePage() {
       {/* TAB 4: DISPATCHES & ORDERS */}
       {activeTab === 'dispatches' && (
         <div className="card-glass">
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+          <div className="card-header-flex">
             <div>
               <h3 style={{ fontSize: '18px', fontWeight: 800 }}>Active Fleet Dispatches</h3>
               <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
@@ -822,7 +823,7 @@ export default function FleetConsolePage() {
             </div>
           </div>
 
-          <div style={{ overflowX: 'auto' }}>
+          <div className="table-scroll">
             <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '13px' }}>
               <thead>
                 <tr style={{ borderBottom: '2px solid var(--border-subtle)', color: 'var(--text-secondary)' }}>

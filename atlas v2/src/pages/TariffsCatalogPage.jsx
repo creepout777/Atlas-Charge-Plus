@@ -174,9 +174,8 @@ export default function TariffsCatalogPage() {
   const peakTotal = (baseFee + (calcKwh * rateKwh)) * multiplier;
 
   return (
-    <div style={{ maxWidth: '960px', margin: '32px auto', padding: '0 20px' }}>
-      {/* Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
+    <div style={{ maxWidth: '960px', margin: '32px auto', padding: '0 20px' }}>      {/* Header */}
+      <div className="card-header-flex" style={{ marginBottom: '20px' }}>
         <div>
           <h1 style={{ fontSize: '24px', fontWeight: 900 }}>Pricing Tariffs & Charge Packages</h1>
           <div style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>
@@ -205,7 +204,7 @@ export default function TariffsCatalogPage() {
           )}
         </div>
       ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: tariffs.length > 1 ? '1fr 1fr' : '1fr', gap: '16px', marginBottom: '28px' }}>
+        <div className="responsive-grid-2" style={{ marginBottom: '28px' }}>
           {tariffs.map((t) => {
             const isActive = t.is_active !== false;
             return (
@@ -218,7 +217,7 @@ export default function TariffsCatalogPage() {
                   transition: 'all 0.2s',
                 }}
               >
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '8px' }}>
                   <div>
                     <div style={{ fontSize: '18px', fontWeight: 800, color: isActive ? 'inherit' : 'var(--text-secondary)' }}>
                       {t.display_name} {!isActive && <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--amber-primary)' }}>(Archived)</span>}
@@ -233,7 +232,7 @@ export default function TariffsCatalogPage() {
                   </span>
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '10px', marginBottom: isSuperAdmin ? '14px' : '0' }}>
+                <div className="card-specs-grid" style={{ marginBottom: isSuperAdmin ? '14px' : '0' }}>
                   <div className="metric-card">
                     <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>BASE CALLOUT</div>
                     <div style={{ fontWeight: 800, fontSize: '16px', fontFamily: 'var(--font-mono)' }}>{t.currency_symbol || '£'}{(t.base_callout_fee || 5.0).toFixed(2)}</div>
@@ -254,7 +253,7 @@ export default function TariffsCatalogPage() {
 
                 {/* ONLY SuperAdmin can see edit/archive/delete buttons on tariffs */}
                 {isSuperAdmin && (
-                  <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', borderTop: '1px solid var(--border-subtle)', paddingTop: '10px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', borderTop: '1px solid var(--border-subtle)', paddingTop: '10px', flexWrap: 'wrap' }}>
                     <button className="btn-outline" style={{ padding: '6px 12px', fontSize: '12px' }} onClick={() => openEditTariff(t)}>
                       <Edit3 size={13} /> Edit
                     </button>
@@ -282,7 +281,7 @@ export default function TariffsCatalogPage() {
       )}
 
       {/* Charge Packages */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
+      <div className="card-header-flex">
         <h3 style={{ fontSize: '18px', fontWeight: 800 }}>Pre-Configured Charge Packages</h3>
         {isSuperAdmin && (
           <button className="btn-emerald" style={{ width: 'auto', fontSize: '12px', padding: '6px 12px' }} onClick={openAddPackage}>
@@ -305,7 +304,7 @@ export default function TariffsCatalogPage() {
           )}
         </div>
       ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px', marginBottom: '28px' }}>
+        <div className="responsive-grid-3" style={{ marginBottom: '28px' }}>
           {packages.map((pkg) => {
             const isPkgActive = pkg.is_active !== false;
             return (
@@ -345,7 +344,7 @@ export default function TariffsCatalogPage() {
                   </div>
                   {/* ONLY SuperAdmin can see edit/archive/delete buttons on packages */}
                   {isSuperAdmin && (
-                    <div style={{ display: 'flex', gap: '6px' }}>
+                    <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
                       <button className="btn-outline" style={{ flex: 1, padding: '5px 8px', fontSize: '12px' }} onClick={() => openEditPackage(pkg)}>
                         <Edit3 size={13} /> Edit
                       </button>
@@ -379,7 +378,7 @@ export default function TariffsCatalogPage() {
           <Calculator size={20} color="#10b981" />
           <h3 style={{ fontSize: '18px', fontWeight: 800 }}>Instant Charging Price Calculator</h3>
         </div>
-        <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '24px', alignItems: 'center' }}>
+        <div className="grid-2col" style={{ alignItems: 'center' }}>
           <div>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', fontSize: '13px' }}>
               <span>Target Energy: <b>{calcKwh} kWh</b></span>

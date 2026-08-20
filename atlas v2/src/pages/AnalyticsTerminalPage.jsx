@@ -38,7 +38,7 @@ export default function AnalyticsTerminalPage() {
       </div>
 
       {/* KPI Cards */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px', marginBottom: '24px' }}>
+      <div className="responsive-grid-4" style={{ marginBottom: '24px' }}>
         <div className="card-glass" style={{ padding: '18px 20px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
             <span style={{ fontSize: '11px', fontWeight: 800, color: 'var(--text-muted)' }}>GROSS DISPATCH REVENUE</span>

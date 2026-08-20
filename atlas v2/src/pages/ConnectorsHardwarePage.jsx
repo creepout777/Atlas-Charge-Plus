@@ -176,17 +176,12 @@ export default function ConnectorsHardwarePage() {
 
   return (
     <div style={{ maxWidth: '960px', margin: '32px auto', padding: '0 20px' }}>
-      {/* Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
+      {/* Top Banner */}
+      <div className="card-header-flex" style={{ marginBottom: '24px' }}>
         <div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <h1 style={{ fontSize: '24px', fontWeight: 900 }}>Charging Hardware & Connector Specs</h1>
-            <span className="brand-pill" style={{ background: 'var(--emerald-light)', color: 'var(--emerald-darker)' }}>
-              <Shield size={12} /> {isSuperAdmin ? 'Executive Hardware Control' : isDispatcher ? 'Fleet Dispatcher Control' : 'Fleet Hardware Standards'}
-            </span>
-          </div>
+          <h1 style={{ fontSize: '24px', fontWeight: 900 }}>Charging Hardware & Connector Standards</h1>
           <div style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>
-            Physical connector protocols & mounted mobile dispensing assemblies
+            Universal CCS2 DC fast-charging standards and dispenser assemblies mounted on mobile battery units
           </div>
         </div>
         {/* ONLY SuperAdmin can add new global standards */}
@@ -212,7 +207,7 @@ export default function ConnectorsHardwarePage() {
           )}
         </div>
       ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '16px', marginBottom: '32px' }}>
+        <div className="responsive-grid-2" style={{ marginBottom: '32px' }}>
           {(connectors || []).map((c) => {
             const isConnActive = c.is_active !== false;
             return (
@@ -225,7 +220,7 @@ export default function ConnectorsHardwarePage() {
                   transition: 'all 0.2s',
                 }}
               >
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '14px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '14px', flexWrap: 'wrap', gap: '8px' }}>
                   <div>
                     <div style={{ fontWeight: 800, fontSize: '18px', color: isConnActive ? 'inherit' : 'var(--text-secondary)' }}>
                       {c.display_name} {!isConnActive && <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--amber-primary)' }}>(Archived)</span>}
@@ -269,7 +264,7 @@ export default function ConnectorsHardwarePage() {
                   )}
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px', marginBottom: isSuperAdmin ? '14px' : '0' }}>
+                <div className="card-specs-grid" style={{ marginBottom: isSuperAdmin ? '14px' : '0' }}>
                   <div className="metric-card">
                     <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>MAX VOLTAGE</div>
                     <div style={{ fontWeight: 800, fontSize: '15px', fontFamily: 'var(--font-mono)' }}>{c.max_voltage_v} V</div>
@@ -286,7 +281,7 @@ export default function ConnectorsHardwarePage() {
 
                 {/* Edit & Delete Actions: Visible ONLY for SuperAdmin */}
                 {isSuperAdmin && (
-                  <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', borderTop: '1px solid var(--border-subtle)', paddingTop: '10px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', borderTop: '1px solid var(--border-subtle)', paddingTop: '10px', flexWrap: 'wrap' }}>
                     <button className="btn-outline" style={{ padding: '6px 12px', fontSize: '12px' }} onClick={() => openEditConn(c)}>
                       <Edit3 size={13} /> Edit
                     </button>
@@ -314,7 +309,7 @@ export default function ConnectorsHardwarePage() {
       )}
 
       {/* Truck Connector Assemblies */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+      <div className="card-header-flex">
         <div>
           <h3 style={{ fontSize: '18px', fontWeight: 800 }}>Mounted Mobile Truck Assemblies</h3>
           <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>Physical cables installed on fleet mobile battery vehicles</div>
@@ -341,7 +336,7 @@ export default function ConnectorsHardwarePage() {
           )}
         </div>
       ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px' }}>
+        <div className="responsive-grid-3" style={{ marginBottom: '16px' }}>
           {(truckConnectors || []).map((tc) => {
             const parentTruck = (trucks || []).find(t => t.id === tc.truck_id);
             const parentConn = (connectors || []).find(c => c.id === tc.connector_type_id);

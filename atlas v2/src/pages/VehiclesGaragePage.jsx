@@ -101,7 +101,7 @@ export default function VehiclesGaragePage() {
           </button>
         </div>
       ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+        <div className="responsive-grid-2">
           {vehicles.map((v) => {
             const matchedConn = connectors.find(c => c.id === v.primary_connector_id);
             return (

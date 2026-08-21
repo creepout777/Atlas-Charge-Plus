@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import { Zap, Navigation, Clock, ShieldCheck, CheckCircle2, Star, Sparkles, MapPin, Gauge, Cpu, Phone, Truck, User, BatteryCharging, AlertCircle, X, Radio, ArrowRight } from 'lucide-react';
+import { Zap, Navigation, Clock, ShieldCheck, CheckCircle2, Star, Sparkles, MapPin, Gauge, Cpu, Phone, Truck, User, BatteryCharging, AlertCircle, X, Radio, ArrowRight, ChevronDown, ChevronUp } from 'lucide-react';
 import { useOrder } from '../context/OrderContext';
 import { useData } from '../context/DataContext';
 import { useAuth } from '../context/AuthContext';
@@ -27,6 +27,8 @@ export default function ClientDispatchPage() {
   const { currentUser } = useAuth();
   const { ordersList, createOrder, updateStatus, cancelOrder, deleteOrder, telemetryLogs } = useOrder();
   const { vehicles, packages, connectors, trucks, drivers, tariffs, addReview } = useData();
+
+  const [isPanelCollapsed, setIsPanelCollapsed] = useState(false);
 
   // Find this client's active ongoing order
   const activeOrder = useMemo(() => {
@@ -327,9 +329,62 @@ export default function ClientDispatchPage() {
       {/* Leaflet Map Canvas */}
       <div ref={mapContainerRef} style={{ width: '100%', height: '100%' }} />
 
-      {/* Floating Dispatch & Status Drawer */}
-      <MobileSheet>
-        {/* CASE 1: No active order and no completed session -> Show Booking Form */}
+      {/* Floating Toggle Button when Collapsed */}
+      {isPanelCollapsed ? (
+        <button
+          onClick={() => setIsPanelCollapsed(false)}
+          style={{
+            position: 'absolute',
+            bottom: '24px',
+            left: '50%',
+            transform: 'translateX(-50%)',
+            zIndex: 1000,
+            background: 'rgba(15, 23, 42, 0.94)',
+            backdropFilter: 'blur(16px)',
+            color: '#fff',
+            border: '1px solid rgba(16, 185, 129, 0.4)',
+            borderRadius: '30px',
+            padding: '12px 24px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '10px',
+            fontWeight: 800,
+            fontSize: '13px',
+            boxShadow: '0 12px 40px rgba(0, 0, 0, 0.5)',
+            cursor: 'pointer',
+            transition: 'transform 0.2s ease',
+          }}
+        >
+          <Zap size={16} color="#10b981" />
+          <span>{activeOrder ? `Active Dispatch (${activeOrder.status})` : 'Show Request Panel'}</span>
+          <ChevronUp size={16} color="#10b981" />
+        </button>
+      ) : (
+        <MobileSheet>
+          {/* Header minimize bar */}
+          <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '8px' }}>
+            <button
+              onClick={() => setIsPanelCollapsed(true)}
+              style={{
+                background: 'rgba(15, 23, 42, 0.08)',
+                border: '1px solid rgba(0,0,0,0.08)',
+                borderRadius: '20px',
+                padding: '4px 12px',
+                color: 'var(--slate-600)',
+                fontSize: '11px',
+                fontWeight: 800,
+                display: 'flex',
+                alignItems: 'center',
+                gap: '4px',
+                cursor: 'pointer',
+              }}
+              title="Minimize panel to view full map"
+            >
+              <ChevronDown size={14} /> Minimize Panel
+            </button>
+          </div>
+
+          {/* CASE 1: No active order and no completed session -> Show Booking Form */}
         {!activeOrder && !completedOrder ? (
           <div>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px', flexWrap: 'wrap', gap: '8px' }}>
@@ -583,6 +638,7 @@ export default function ClientDispatchPage() {
           </div>
         )}
       </MobileSheet>
+      )}
     </div>
   );
 }

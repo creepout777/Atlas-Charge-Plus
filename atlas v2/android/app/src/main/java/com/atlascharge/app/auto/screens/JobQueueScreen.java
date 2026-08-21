@@ -11,6 +11,8 @@ import androidx.car.app.model.ItemList;
 import androidx.car.app.model.ListTemplate;
 import androidx.car.app.model.Row;
 import androidx.car.app.model.Template;
+import androidx.lifecycle.DefaultLifecycleObserver;
+import androidx.lifecycle.LifecycleOwner;
 
 import com.atlascharge.app.auto.CarDataBridge;
 import com.atlascharge.app.auto.SupabaseApiClient;
@@ -37,7 +39,19 @@ public class JobQueueScreen extends Screen {
     public JobQueueScreen(@NonNull CarContext carContext) {
         super(carContext);
         loadJobs();
-        startAutoRefresh();
+        getLifecycle().addObserver(new DefaultLifecycleObserver() {
+            @Override
+            public void onStart(@NonNull LifecycleOwner owner) {
+                startAutoRefresh();
+            }
+
+            @Override
+            public void onStop(@NonNull LifecycleOwner owner) {
+                if (refreshHandler != null && refreshRunnable != null) {
+                    refreshHandler.removeCallbacks(refreshRunnable);
+                }
+            }
+        });
     }
 
     private void loadJobs() {
@@ -82,20 +96,17 @@ public class JobQueueScreen extends Screen {
     }
 
     private void startAutoRefresh() {
-        refreshHandler = new Handler(Looper.getMainLooper());
+        if (refreshHandler == null) {
+            refreshHandler = new Handler(Looper.getMainLooper());
+        }
+        if (refreshRunnable != null) {
+            refreshHandler.removeCallbacks(refreshRunnable);
+        }
         refreshRunnable = () -> {
             loadJobs();
             refreshHandler.postDelayed(refreshRunnable, 5000);
         };
         refreshHandler.postDelayed(refreshRunnable, 5000);
-    }
-
-    @Override
-    public void onStop() {
-        super.onStop();
-        if (refreshHandler != null && refreshRunnable != null) {
-            refreshHandler.removeCallbacks(refreshRunnable);
-        }
     }
 
     @NonNull

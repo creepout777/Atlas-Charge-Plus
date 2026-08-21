@@ -12,6 +12,8 @@ import androidx.car.app.model.Pane;
 import androidx.car.app.model.PaneTemplate;
 import androidx.car.app.model.Row;
 import androidx.car.app.model.Template;
+import androidx.lifecycle.DefaultLifecycleObserver;
+import androidx.lifecycle.LifecycleOwner;
 
 import com.atlascharge.app.auto.CarDataBridge;
 import com.atlascharge.app.auto.SupabaseApiClient;
@@ -51,6 +53,20 @@ public class ChargingScreen extends Screen {
         if (job.has("status")) {
             this.currentStatus = job.get("status").getAsString();
         }
+
+        getLifecycle().addObserver(new DefaultLifecycleObserver() {
+            @Override
+            public void onStart(@NonNull LifecycleOwner owner) {
+                if ("CHARGING".equals(currentStatus)) {
+                    startChargingTimer();
+                }
+            }
+
+            @Override
+            public void onStop(@NonNull LifecycleOwner owner) {
+                stopChargingTimer();
+            }
+        });
     }
 
     private void startChargingTimer() {
@@ -70,12 +86,6 @@ public class ChargingScreen extends Screen {
         if (timerExecutor != null && !timerExecutor.isShutdown()) {
             timerExecutor.shutdownNow();
         }
-    }
-
-    @Override
-    public void onStop() {
-        super.onStop();
-        stopChargingTimer();
     }
 
     @NonNull

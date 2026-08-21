@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import { Truck, Navigation, Zap, CheckCircle2, AlertTriangle, Play, Square, BellRing, Gauge, Battery, BatteryCharging, Activity, Coffee, Power, Phone, User, Clock, ChevronRight, MapPin, Compass, ShieldCheck } from 'lucide-react';
+import { Truck, Navigation, Zap, CheckCircle2, AlertTriangle, Play, Square, BellRing, Gauge, Battery, BatteryCharging, Activity, Coffee, Power, Phone, User, Clock, ChevronRight, MapPin, Compass, ShieldCheck, ChevronDown, ChevronUp, Eye, EyeOff } from 'lucide-react';
 import { useOrder } from '../context/OrderContext';
 import { useData } from '../context/DataContext';
 import { useAuth } from '../context/AuthContext';
@@ -43,6 +43,8 @@ export default function DriverCockpitPage() {
   const { currentUser } = useAuth();
   const { ordersList, updateStatus, claimOrder, logTelemetry, broadcastGps } = useOrder();
   const { trucks, drivers, vehicles, packages, updateTruck, updateDriver, addInvoice } = useData();
+
+  const [isHudCollapsed, setIsHudCollapsed] = useState(false);
 
   // Identify logged in driver and assigned mobile unit
   const myDriverProfile = useMemo(() => {
@@ -457,21 +459,72 @@ export default function DriverCockpitPage() {
       {/* Leaflet Map Canvas */}
       <div ref={mapContainerRef} style={{ width: '100%', height: '100%' }} />
 
-      {/* Single Consolidated Top Dashboard HUD */}
-      <div style={{
-        position: 'absolute',
-        top: '12px',
-        left: '12px',
-        right: '12px',
-        zIndex: 500,
-        background: 'rgba(15, 23, 42, 0.95)',
-        backdropFilter: 'blur(16px)',
-        padding: '10px 14px',
-        borderRadius: 'var(--radius-md)',
-        border: myActiveJob && myActiveJob.status === 'EN_ROUTE' ? '1px solid rgba(16, 185, 129, 0.5)' : '1px solid rgba(255, 255, 255, 0.12)',
-        color: '#fff',
-        boxShadow: '0 8px 32px rgba(0, 0, 0, 0.4)',
-      }}>
+      {/* Collapsed Floating Pill for Full Map View */}
+      {isHudCollapsed ? (
+        <button
+          onClick={() => setIsHudCollapsed(false)}
+          style={{
+            position: 'absolute',
+            top: '12px',
+            left: '50%',
+            transform: 'translateX(-50%)',
+            zIndex: 600,
+            background: 'rgba(15, 23, 42, 0.94)',
+            backdropFilter: 'blur(16px)',
+            color: '#fff',
+            border: '1px solid rgba(16, 185, 129, 0.5)',
+            borderRadius: '24px',
+            padding: '8px 18px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            fontWeight: 800,
+            fontSize: '12px',
+            boxShadow: '0 8px 32px rgba(0, 0, 0, 0.5)',
+            cursor: 'pointer',
+          }}
+        >
+          <Truck size={16} color="#10b981" />
+          <span>{currentTruck?.display_name || 'Titan Unit'} {myActiveJob ? `· ${myActiveJob.status}` : '· Available'}</span>
+          <Eye size={14} color="#10b981" />
+        </button>
+      ) : (
+        <div style={{
+          position: 'absolute',
+          top: '12px',
+          left: '12px',
+          right: '12px',
+          zIndex: 500,
+          background: 'rgba(15, 23, 42, 0.95)',
+          backdropFilter: 'blur(16px)',
+          padding: '10px 14px',
+          borderRadius: 'var(--radius-md)',
+          border: myActiveJob && myActiveJob.status === 'EN_ROUTE' ? '1px solid rgba(16, 185, 129, 0.5)' : '1px solid rgba(255, 255, 255, 0.12)',
+          color: '#fff',
+          boxShadow: '0 8px 32px rgba(0, 0, 0, 0.4)',
+        }}>
+          {/* Header minimize handle */}
+          <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '4px' }}>
+            <button
+              onClick={() => setIsHudCollapsed(true)}
+              style={{
+                background: 'rgba(255, 255, 255, 0.08)',
+                border: 'none',
+                borderRadius: '12px',
+                padding: '3px 10px',
+                color: 'var(--slate-300)',
+                fontSize: '10px',
+                fontWeight: 800,
+                display: 'flex',
+                alignItems: 'center',
+                gap: '4px',
+                cursor: 'pointer',
+              }}
+              title="Minimize HUD panel for full map view"
+            >
+              <EyeOff size={12} /> Minimize HUD
+            </button>
+          </div>
         {/* Row 1: Unit Info & Controls */}
         <div style={{
           display: 'flex',
@@ -583,6 +636,7 @@ export default function DriverCockpitPage() {
           </div>
         )}
       </div>
+      )}
 
       {/* Driver Cockpit Bottom Drawer */}
       <MobileSheet>

@@ -104,14 +104,10 @@ export default function FleetConsolePage() {
   useEffect(() => {
     if (activeTab !== 'overview' && activeTab !== 'trucks') return;
     if (!mapContainerRef.current) return;
-
-    if (mapInstanceRef.current) {
-      mapInstanceRef.current.remove();
-      mapInstanceRef.current = null;
-    }
+    if (mapInstanceRef.current) return; // Keep map instance intact to prevent map reload/flicker
 
     const timer = setTimeout(() => {
-      if (!mapContainerRef.current) return;
+      if (!mapContainerRef.current || mapInstanceRef.current) return;
       const map = L.map(mapContainerRef.current, {
         center: [51.5074, -0.1278],
         zoom: 12,
@@ -147,10 +143,6 @@ export default function FleetConsolePage() {
 
     return () => {
       clearTimeout(timer);
-      if (mapInstanceRef.current) {
-        mapInstanceRef.current.remove();
-        mapInstanceRef.current = null;
-      }
     };
   }, [activeTab]);
 

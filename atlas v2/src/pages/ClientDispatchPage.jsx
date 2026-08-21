@@ -107,6 +107,12 @@ export default function ClientDispatchPage() {
   const clientMarkerRef = useRef(null);
   const truckMarkerRef = useRef(null);
   const routeLineRef = useRef(null);
+  const hasFittedBoundsRef = useRef(false);
+
+  // Reset bounds lock when active order changes
+  useEffect(() => {
+    hasFittedBoundsRef.current = false;
+  }, [activeOrder?.id]);
 
   useEffect(() => {
     if (activePackages.length > 0 && !selectedPkg) setSelectedPkg(activePackages[1] || activePackages[0]);
@@ -209,7 +215,11 @@ export default function ClientDispatchPage() {
         routeLineRef.current.setLatLngs([truckPos, clientPos]);
       }
 
-      mapInstanceRef.current.fitBounds([truckPos, clientPos], { padding: [70, 70] });
+      // Fit bounds ONCE per session to avoid constant re-zooming/re-centering jitter
+      if (!hasFittedBoundsRef.current) {
+        hasFittedBoundsRef.current = true;
+        mapInstanceRef.current.fitBounds([truckPos, clientPos], { padding: [70, 70] });
+      }
     } else {
       if (truckMarkerRef.current) {
         truckMarkerRef.current.remove();

@@ -97,6 +97,11 @@ export default function DriverCockpitPage() {
   const routeLineRef = useRef(null);
   const simTimerRef = useRef(null);
   const navGpsTimerRef = useRef(null);
+  const hasFittedJobBoundsRef = useRef(false);
+
+  useEffect(() => {
+    hasFittedJobBoundsRef.current = false;
+  }, [myActiveJob?.id]);
 
   // Live GPS continuous tracking effect
   useEffect(() => {
@@ -259,15 +264,16 @@ export default function DriverCockpitPage() {
       }
     });
 
-    // If we have available jobs and no active job, fit bounds to show all
-    if (availableQueueJobs.length > 0 && !myActiveJob) {
+    // If we have available jobs and no active job, fit bounds ONCE to show all
+    if (availableQueueJobs.length > 0 && !myActiveJob && !hasFittedJobBoundsRef.current) {
+      hasFittedJobBoundsRef.current = true;
       const allPoints = [
         truckPos,
         ...availableQueueJobs.map(j => [j.target_lat || 51.5014, j.target_lng || -0.1918]),
       ];
       mapInstanceRef.current.fitBounds(allPoints, { padding: [60, 60], maxZoom: 15 });
     }
-  }, [availableQueueJobs, myActiveJob, truckPos]);
+  }, [availableQueueJobs, myActiveJob]);
 
   // 3. Render Active Assigned Job (Neon Emerald Marker & Navigation Route)
   useEffect(() => {
@@ -306,7 +312,10 @@ export default function DriverCockpitPage() {
         routeLineRef.current.setLatLngs([truckPos, clientPos]);
       }
 
-      mapInstanceRef.current.fitBounds([truckPos, clientPos], { padding: [70, 70] });
+      if (!hasFittedJobBoundsRef.current) {
+        hasFittedJobBoundsRef.current = true;
+        mapInstanceRef.current.fitBounds([truckPos, clientPos], { padding: [70, 70] });
+      }
     } else {
       if (clientMarkerRef.current) {
         clientMarkerRef.current.remove();

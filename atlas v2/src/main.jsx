@@ -19,7 +19,7 @@ if (typeof window !== 'undefined') {
   }
 }
 
-// 2. Global Error Boundary to prevent Blank White Screen crashes in WebView
+// 2. Global Error Boundary with detailed exception diagnostic output
 class ErrorBoundary extends React.Component {
   constructor(props) {
     super(props);
@@ -45,12 +45,25 @@ class ErrorBoundary extends React.Component {
           justifyContent: 'center',
           background: '#0f172a',
           color: '#ffffff',
-          fontFamily: 'system-ui, sans-serif',
-          padding: '24px',
-          textAlign: 'center'
+          fontFamily: 'monospace',
+          padding: '20px',
+          overflowY: 'auto'
         }}>
-          <h2 style={{ fontSize: '20px', fontWeight: 800, marginBottom: '8px', color: '#10b981' }}>Atlas Charge Plus</h2>
-          <p style={{ fontSize: '13px', color: '#94a3b8', marginBottom: '16px' }}>App Initializing or Recovering...</p>
+          <h2 style={{ fontSize: '18px', fontWeight: 800, color: '#10b981', marginBottom: '8px' }}>Atlas Charge Plus</h2>
+          <div style={{
+            background: '#1e293b',
+            border: '1px solid #ef4444',
+            borderRadius: '8px',
+            padding: '12px',
+            maxWidth: '100%',
+            wordBreak: 'break-word',
+            fontSize: '12px',
+            color: '#f87171',
+            marginBottom: '16px',
+            textAlign: 'left'
+          }}>
+            <b>Runtime Error:</b> {this.state.error?.toString()}
+          </div>
           <button
             onClick={() => window.location.reload()}
             style={{
@@ -63,7 +76,7 @@ class ErrorBoundary extends React.Component {
               cursor: 'pointer'
             }}
           >
-            Reload Application
+            Reload App
           </button>
         </div>
       );

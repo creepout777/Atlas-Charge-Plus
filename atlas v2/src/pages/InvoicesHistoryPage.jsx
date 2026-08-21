@@ -17,9 +17,6 @@ export default function InvoicesHistoryPage() {
     <div style={{ maxWidth: '900px', margin: '32px auto', padding: '0 20px' }}>
       <div style={{ marginBottom: '24px' }}>
         <h1 style={{ fontSize: '24px', fontWeight: 900 }}>Billing & Itemized VAT Invoices</h1>
-        <div style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>
-          Live tax invoices & billing records from Supabase (<code>order_invoices</code>)
-        </div>
       </div>
 
       {invoices.length === 0 ? (

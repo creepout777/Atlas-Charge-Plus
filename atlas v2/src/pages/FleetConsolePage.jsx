@@ -404,9 +404,6 @@ export default function FleetConsolePage() {
               <Shield size={12} /> {isSuperAdmin ? 'Executive Fleet Management' : 'Fleet Dispatch Control'}
             </span>
           </div>
-          <div style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>
-            Real-time telemetry, mobile battery fleet status & field technician coordination
-          </div>
         </div>
 
         {/* Tab Navigation */}

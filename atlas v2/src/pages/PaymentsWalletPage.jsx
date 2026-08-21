@@ -34,9 +34,6 @@ export default function PaymentsWalletPage() {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
         <div>
           <h1 style={{ fontSize: '24px', fontWeight: 900 }}>Payment Methods & Wallet</h1>
-          <div style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>
-            Live database sync with Supabase PostgreSQL (<code>payment_methods</code>)
-          </div>
         </div>
         <button className="btn-emerald" style={{ width: 'auto' }} onClick={() => setShowAddModal(true)}>
           <Plus size={16} /> Add Payment Method

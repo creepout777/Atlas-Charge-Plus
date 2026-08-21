@@ -82,9 +82,6 @@ export default function ReviewsFeedbackPage() {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
         <div>
           <h1 style={{ fontSize: '24px', fontWeight: 900 }}>Customer Reviews & Quality Ratings</h1>
-          <div style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>
-            Verified reviews from completed mobile charging sessions
-          </div>
         </div>
         {canWriteReview && (
           <button className="btn-emerald" style={{ width: 'auto', padding: '8px 16px', fontSize: '13px' }} onClick={handleOpenModal}>

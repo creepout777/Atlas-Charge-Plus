@@ -178,9 +178,6 @@ export default function TariffsCatalogPage() {
       <div className="card-header-flex" style={{ marginBottom: '20px' }}>
         <div>
           <h1 style={{ fontSize: '24px', fontWeight: 900 }}>Pricing Tariffs & Charge Packages</h1>
-          <div style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>
-            Live rates fetched directly from PostgreSQL (<code>pricing_tariffs</code> & <code>charge_packages</code>) · Supports Soft-Archiving
-          </div>
         </div>
         {isSuperAdmin && (
           <button className="btn-emerald" style={{ width: 'auto', fontSize: '13px', padding: '8px 16px' }} onClick={openAddTariff}>

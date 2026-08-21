@@ -80,9 +80,6 @@ export default function VehiclesGaragePage() {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
         <div>
           <h1 style={{ fontSize: '24px', fontWeight: 900 }}>Customer EV Garage</h1>
-          <div style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>
-            Your registered electric vehicles synced with PostgreSQL (<code>customer_vehicles</code>)
-          </div>
         </div>
         <button className="btn-emerald" style={{ width: 'auto' }} onClick={openAddModal}>
           <Plus size={16} /> Add Electric Vehicle

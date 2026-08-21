@@ -180,9 +180,6 @@ export default function ConnectorsHardwarePage() {
       <div className="card-header-flex" style={{ marginBottom: '24px' }}>
         <div>
           <h1 style={{ fontSize: '24px', fontWeight: 900 }}>Charging Hardware & Connector Standards</h1>
-          <div style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>
-            Universal CCS2 DC fast-charging standards and dispenser assemblies mounted on mobile battery units
-          </div>
         </div>
         {/* ONLY SuperAdmin can add new global standards */}
         {isSuperAdmin && (

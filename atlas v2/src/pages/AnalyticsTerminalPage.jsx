@@ -32,9 +32,6 @@ export default function AnalyticsTerminalPage() {
             <Activity size={12} /> Live Fleet Operations
           </span>
         </div>
-        <div style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>
-          High-voltage DC power delivery diagnostics, revenue throughput & fleet operational metrics
-        </div>
       </div>
 
       {/* KPI Cards */}

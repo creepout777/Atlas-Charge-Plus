@@ -2,6 +2,9 @@
   "appId": "com.atlascharge.app",
   "appName": "Atlas Charge Plus",
   "webDir": "dist",
+  "server": {
+    "androidScheme": "https"
+  },
   "plugins": {
     "SplashScreen": {
       "launchShowDuration": 2000,

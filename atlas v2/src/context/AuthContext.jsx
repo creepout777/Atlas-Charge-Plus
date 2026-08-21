@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import { authService } from '../services/api/authService.js';
 import { supabase } from '../services/supabase.js';
+import { CarDataBridge } from '../services/carDataBridge.js';
 
 const AuthContext = createContext();
 
@@ -66,6 +67,32 @@ export function AuthProvider({ children }) {
       const { data, error } = await authService.fetchUserProfile(userId);
       if (!error && data && data.is_active !== false) {
         setCurrentUser(data);
+
+        // Sync driver session to Android Auto via SharedPreferences bridge
+        if (data.role === 'DRIVER') {
+          try {
+            const { data: driverProfiles } = await supabase
+              .from('driver_profiles')
+              .select('assigned_truck_id')
+              .eq('user_id', userId)
+              .limit(1);
+            const truckId = driverProfiles?.[0]?.assigned_truck_id || '';
+            let truckName = 'Atlas Mobile Unit';
+            if (truckId) {
+              const { data: truckData } = await supabase
+                .from('fleet_trucks')
+                .select('display_name')
+                .eq('id', truckId)
+                .limit(1);
+              truckName = truckData?.[0]?.display_name || truckName;
+            }
+            const currentSession = await authService.getSession();
+            const token = currentSession?.data?.session?.access_token || '';
+            CarDataBridge.syncDriverSession(token, userId, data.full_name, truckId, truckName);
+          } catch (e) {
+            console.warn('CarDataBridge sync skipped:', e);
+          }
+        }
       } else {
         console.warn('User profile not found in public.users or is inactive:', userId);
         await authService.signOut();
@@ -91,6 +118,7 @@ export function AuthProvider({ children }) {
   };
 
   const signOut = async () => {
+    await CarDataBridge.clearSession();
     await authService.signOut();
     setSession(null);
     setCurrentUser(null);

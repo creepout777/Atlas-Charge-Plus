@@ -7,7 +7,7 @@
   },
   "plugins": {
     "SplashScreen": {
-      "launchShowDuration": 1500,
+      "launchShowDuration": 0,
       "launchAutoHide": true,
       "backgroundColor": "#ffffff",
       "androidSplashResourceName": "splash",

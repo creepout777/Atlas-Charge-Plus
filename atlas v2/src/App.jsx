@@ -39,6 +39,9 @@ function SmartHomeWrapper() {
 export default function App() {
   useEffect(() => {
     if (Capacitor.isNativePlatform()) {
+      // Hide native splash immediately so web animated loading screen shows instantly
+      SplashScreen.hide().catch(() => {});
+
       // Position navbar below camera with dedicated dark status bar
       StatusBar.setOverlaysWebView({ overlay: false }).catch(() => {});
       StatusBar.setStyle({ style: Style.Dark }).catch(() => {});

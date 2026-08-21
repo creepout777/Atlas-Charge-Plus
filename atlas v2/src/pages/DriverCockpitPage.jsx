@@ -9,6 +9,7 @@ import { playDispatchChime } from '../services/sound';
 import MobileSheet from '../components/layout/MobileSheet';
 import Modal from '../components/layout/Modal';
 import SpeedometerGauge from '../components/telemetry/SpeedometerGauge';
+import { watchLocation, clearWatchLocation, getCurrentLocation } from '../services/nativePermissions';
 
 const DUTY_STATUSES = [
   { value: 'AVAILABLE', label: '🟢 Available (On Duty)', color: 'var(--emerald-light)', text: 'var(--emerald-darker)' },
@@ -47,6 +48,10 @@ export default function DriverCockpitPage() {
   const myDriverProfile = useMemo(() => {
     return drivers.find(d => d.user_id === currentUser?.id) || drivers[0] || null;
   }, [drivers, currentUser]);
+
+  const [myDutyStatus, setMyDutyStatus] = useState(myDriverProfile?.duty_status || 'AVAILABLE');
+  const [gpsActive, setGpsActive] = useState(false);
+  const [gpsAccuracy, setGpsAccuracy] = useState(null);
 
   const currentTruck = useMemo(() => {
     if (myDriverProfile?.assigned_truck_id) {
@@ -92,6 +97,45 @@ export default function DriverCockpitPage() {
   const routeLineRef = useRef(null);
   const simTimerRef = useRef(null);
   const navGpsTimerRef = useRef(null);
+
+  // Live GPS continuous tracking effect
+  useEffect(() => {
+    if (myDutyStatus === 'OFF_DUTY') {
+      setGpsActive(false);
+      return;
+    }
+
+    let activeWatchId = null;
+    watchLocation(
+      (pos) => {
+        const newLat = pos.lat;
+        const newLng = pos.lng;
+        setGpsAccuracy(pos.accuracy ? Math.round(pos.accuracy) : 10);
+        setGpsActive(true);
+        setTruckPos([newLat, newLng]);
+
+        if (truckMarkerRef.current) {
+          truckMarkerRef.current.setLatLng([newLat, newLng]);
+        }
+
+        if (currentTruck?.id) {
+          updateTruck(currentTruck.id, { current_lat: newLat, current_lng: newLng }).catch(() => {});
+        }
+      },
+      (err) => {
+        console.warn('Driver GPS watch note:', err?.message);
+        setGpsActive(false);
+      }
+    ).then(id => {
+      activeWatchId = id;
+    });
+
+    return () => {
+      if (activeWatchId) {
+        clearWatchLocation(activeWatchId);
+      }
+    };
+  }, [myDutyStatus, currentTruck?.id, updateTruck]);
 
   // Synchronize initial truck coordinates
   useEffect(() => {
@@ -459,9 +503,9 @@ export default function DriverCockpitPage() {
         <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
           <select
             style={{
-              background: 'rgba(255,255,255,0.1)',
+              background: 'rgba(255, 255, 255, 0.08)',
+              border: '1px solid rgba(255, 255, 255, 0.15)',
               color: '#fff',
-              border: '1px solid rgba(255,255,255,0.2)',
               borderRadius: 'var(--radius-sm)',
               padding: '6px 10px',
               fontSize: '12px',
@@ -478,6 +522,23 @@ export default function DriverCockpitPage() {
               </option>
             ))}
           </select>
+
+          {/* GPS Live Signal Indicator */}
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '5px',
+            background: gpsActive ? 'rgba(16, 185, 129, 0.15)' : 'rgba(239, 68, 68, 0.15)',
+            border: `1px solid ${gpsActive ? '#10b981' : '#ef4444'}`,
+            borderRadius: 'var(--radius-full)',
+            padding: '4px 8px',
+            fontSize: '10px',
+            fontWeight: 800,
+            color: gpsActive ? '#34d399' : '#f87171'
+          }}>
+            <Navigation size={11} className={gpsActive ? 'pulse' : ''} />
+            {gpsActive ? `GPS LIVE ${gpsAccuracy ? `(±${gpsAccuracy}m)` : ''}` : 'GPS Offline'}
+          </div>
 
           <div style={{ textAlign: 'right' }}>
             <div style={{ fontSize: '10px', color: 'var(--slate-400)' }}>BUFFER BATTERY</div>

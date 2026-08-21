@@ -116,6 +116,83 @@ export async function getCurrentLocation() {
 }
 
 /**
+ * Continuous live location watch stream (for Driver cockpit and active Client dispatch)
+ */
+export async function watchLocation(onPosition, onError) {
+  if (isNative()) {
+    try {
+      const perm = await checkLocationPermissions();
+      if (perm.location !== 'granted') {
+        await requestLocationPermissions();
+      }
+      const watchId = await Geolocation.watchPosition(
+        { enableHighAccuracy: true, timeout: 10000, maximumAge: 3000 },
+        (position, err) => {
+          if (err) {
+            if (onError) onError(err);
+          } else if (position?.coords && onPosition) {
+            onPosition({
+              lat: position.coords.latitude,
+              lng: position.coords.longitude,
+              accuracy: position.coords.accuracy,
+              heading: position.coords.heading || 0,
+              speed: position.coords.speed || 0,
+            });
+          }
+        }
+      );
+      return watchId;
+    } catch (err) {
+      if (onError) onError(err);
+      return null;
+    }
+  }
+
+  // Web Fallback
+  if (!navigator.geolocation) {
+    if (onError) onError(new Error('Geolocation not supported on web'));
+    return null;
+  }
+
+  const id = navigator.geolocation.watchPosition(
+    (pos) => {
+      if (onPosition) {
+        onPosition({
+          lat: pos.coords.latitude,
+          lng: pos.coords.longitude,
+          accuracy: pos.coords.accuracy,
+          heading: pos.coords.heading || 0,
+          speed: pos.coords.speed || 0,
+        });
+      }
+    },
+    (err) => {
+      if (onError) onError(err);
+    },
+    { enableHighAccuracy: true, timeout: 10000, maximumAge: 3000 }
+  );
+
+  return id;
+}
+
+/**
+ * Clears an active location watch
+ */
+export async function clearWatchLocation(watchId) {
+  if (!watchId) return;
+  if (isNative()) {
+    try {
+      await Geolocation.clearWatch({ id: watchId });
+    } catch (e) {
+      console.warn('[NativePermissions] Error clearing native watch:', e);
+    }
+  } else if (navigator.geolocation) {
+    navigator.geolocation.clearWatch(watchId);
+  }
+}
+
+
+/**
  * Checks Notification permissions (required on Android 13+)
  */
 export async function checkNotificationPermissions() {

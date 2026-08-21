@@ -152,7 +152,29 @@ export default function FleetConsolePage() {
         mapInstanceRef.current = null;
       }
     };
-  }, [activeTab, trucks]);
+  }, [activeTab]);
+
+  // Update fleet marker positions dynamically when live trucks data updates
+  useEffect(() => {
+    if (!mapInstanceRef.current || !trucks) return;
+    (trucks || []).forEach((truck, index) => {
+      const marker = truckMarkersRef.current?.[index];
+      const lat = truck.current_lat || truck.base_lat || 51.5074;
+      const lng = truck.current_lng || truck.base_lng || -0.1278;
+      if (marker) {
+        marker.setLatLng([lat, lng]);
+        const assignedDriver = (drivers || []).find(d => d.assigned_truck_id === truck.id);
+        marker.setPopupContent(`
+          <div style="font-family: sans-serif; padding: 2px;">
+            <b style="color: #0f172a; font-size: 13px;">${truck.display_name}</b> (${truck.license_plate})<br/>
+            <span style="color: #10b981; font-weight: 800; font-size: 11px;">🟢 LIVE GPS (${lat.toFixed(4)}, ${lng.toFixed(4)})</span><br/>
+            <span style="color: #475569; font-size: 11px;">Tech: ${assignedDriver?.full_name || 'Assigned Driver'}</span><br/>
+            <span style="color: #64748b; font-size: 11px;">Battery: ${truck.current_stored_kwh} kWh stored · Status: ${truck.operational_status}</span>
+          </div>
+        `);
+      }
+    });
+  }, [trucks, drivers]);
 
   // --- Handlers ---
   const openAddTruck = () => {

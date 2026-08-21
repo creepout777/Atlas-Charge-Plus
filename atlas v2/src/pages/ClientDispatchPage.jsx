@@ -9,6 +9,7 @@ import MobileSheet from '../components/layout/MobileSheet';
 import Modal from '../components/layout/Modal';
 import SpeedometerGauge from '../components/telemetry/SpeedometerGauge';
 import StarRating from '../components/shared/StarRating';
+import { getCurrentLocation } from '../services/nativePermissions';
 
 function calculateDistanceKm(lat1, lon1, lat2, lon2) {
   const R = 6371;
@@ -36,6 +37,34 @@ export default function ClientDispatchPage() {
   const [dismissedOrderIds, setDismissedOrderIds] = useState(new Set());
   const [completedOrder, setCompletedOrder] = useState(null);
   const initialDismissRef = useRef(false);
+
+  // Target location & live GPS
+  const [selectedPkg, setSelectedPkg] = useState(null);
+  const [selectedVehicle, setSelectedVehicle] = useState(null);
+  const [selectedConnector, setSelectedConnector] = useState(null);
+  const [targetAddress, setTargetAddress] = useState('45 Kensington High St, London W8 5ED');
+  const [targetCoords, setTargetCoords] = useState([51.5014, -0.1918]);
+  const [isLocating, setIsLocating] = useState(false);
+
+  const handleUseLiveLocation = async () => {
+    setIsLocating(true);
+    try {
+      const pos = await getCurrentLocation();
+      const newCoords = [pos.lat, pos.lng];
+      setTargetCoords(newCoords);
+      setTargetAddress(`Live GPS: ${pos.lat.toFixed(4)}, ${pos.lng.toFixed(4)} (Current Position)`);
+      if (mapInstanceRef.current) {
+        mapInstanceRef.current.flyTo(newCoords, 15);
+        if (clientMarkerRef.current) {
+          clientMarkerRef.current.setLatLng(newCoords);
+        }
+      }
+    } catch (err) {
+      console.warn('Could not retrieve live GPS location:', err.message);
+    } finally {
+      setIsLocating(false);
+    }
+  };
 
   // Dismiss historical completed orders on initial load so login shows Request Dispatch form
   useEffect(() => {
@@ -67,12 +96,6 @@ export default function ClientDispatchPage() {
 
   const activePackages = packages.filter(p => p.is_active !== false);
   const activeConnectors = connectors.filter(c => c.is_active !== false);
-
-  const [selectedPkg, setSelectedPkg] = useState(null);
-  const [selectedVehicle, setSelectedVehicle] = useState(null);
-  const [selectedConnector, setSelectedConnector] = useState(null);
-  const [targetAddress, setTargetAddress] = useState('45 Kensington High St, London W8 5ED');
-  const [targetCoords, setTargetCoords] = useState([51.5014, -0.1918]);
 
   const [reviewStars, setReviewStars] = useState(5);
   const [reviewComment, setReviewComment] = useState('');
@@ -299,7 +322,7 @@ export default function ClientDispatchPage() {
         {/* CASE 1: No active order and no completed session -> Show Booking Form */}
         {!activeOrder && !completedOrder ? (
           <div>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px', flexWrap: 'wrap', gap: '8px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <div className="status-dot emerald pulse" />
                 <div>
@@ -307,9 +330,21 @@ export default function ClientDispatchPage() {
                   <div style={{ fontFamily: 'var(--font-display)', fontSize: '15px', fontWeight: 800 }}>{targetAddress}</div>
                 </div>
               </div>
-              <span className="brand-pill">
-                <Zap size={12} /> Est. ETA: 8-12 min
-              </span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <button
+                  type="button"
+                  onClick={handleUseLiveLocation}
+                  disabled={isLocating}
+                  className="btn-outline"
+                  style={{ padding: '6px 10px', fontSize: '11px', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '4px', background: '#ecfdf5', borderColor: '#a7f3d0', color: '#047857' }}
+                  title="Detect current device GPS location"
+                >
+                  <Navigation size={12} className={isLocating ? 'spin' : ''} /> {isLocating ? 'Locating...' : 'Use My GPS'}
+                </button>
+                <span className="brand-pill">
+                  <Zap size={12} /> Est. ETA: 8-12 min
+                </span>
+              </div>
             </div>
 
             {/* EV Vehicle Selector */}

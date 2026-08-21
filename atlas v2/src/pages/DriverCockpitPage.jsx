@@ -137,8 +137,10 @@ export default function DriverCockpitPage() {
         });
       },
       (err) => {
-        console.warn('Driver GPS watch note:', err?.message);
-        setGpsActive(false);
+        // Do not toggle off on transient satellite acquisition notes unless permission is hard denied
+        if (err?.code === 1) { // PERMISSION_DENIED
+          setGpsActive(false);
+        }
       }
     ).then(id => {
       activeWatchId = id;
@@ -458,42 +460,47 @@ export default function DriverCockpitPage() {
       {/* Top Telemetry & Duty HUD */}
       <div style={{
         position: 'absolute',
-        top: '16px',
-        left: '16px',
-        right: '16px',
+        top: '12px',
+        left: '12px',
+        right: '12px',
         zIndex: 500,
         display: 'flex',
+        flexWrap: 'wrap',
         justifyContent: 'space-between',
         alignItems: 'center',
-        background: 'rgba(15, 23, 42, 0.94)',
-        backdropFilter: 'blur(12px)',
-        padding: '12px 18px',
+        gap: '10px',
+        background: 'rgba(15, 23, 42, 0.95)',
+        backdropFilter: 'blur(16px)',
+        padding: '10px 14px',
         borderRadius: 'var(--radius-md)',
+        border: '1px solid rgba(255, 255, 255, 0.12)',
         color: '#fff',
-        boxShadow: '0 8px 32px rgba(0,0,0,0.3)',
+        boxShadow: '0 8px 32px rgba(0, 0, 0, 0.4)',
       }}>
-        <div style={{ display: 'flex', gap: '14px', alignItems: 'center' }}>
-          <div style={{ width: '42px', height: '42px', background: 'var(--emerald-primary)', borderRadius: 'var(--radius-sm)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <Truck size={22} color="#fff" />
+        {/* Left: Truck & Tech Identification */}
+        <div style={{ display: 'flex', gap: '10px', alignItems: 'center', minWidth: '180px' }}>
+          <div style={{ width: '38px', height: '38px', background: 'var(--emerald-primary)', borderRadius: 'var(--radius-sm)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+            <Truck size={20} color="#fff" />
           </div>
           <div>
-            <div style={{ fontWeight: 800, fontSize: '15px' }}>{currentTruck?.display_name || 'Atlas Titan Mobile'}</div>
-            <div style={{ fontSize: '11px', color: 'var(--slate-400)' }}>
-              {currentTruck?.truck_code} · {currentTruck?.license_plate} · Tech: <b>{currentUser?.full_name || myDriverProfile?.full_name || 'Field Driver'}</b>
+            <div style={{ fontWeight: 800, fontSize: '14px', whiteSpace: 'nowrap' }}>{currentTruck?.display_name || 'Atlas Titan Mobile'}</div>
+            <div style={{ fontSize: '11px', color: 'var(--slate-400)', whiteSpace: 'nowrap' }}>
+              {currentTruck?.license_plate || 'EK24 EVX'} · Tech: <b>{currentUser?.full_name || myDriverProfile?.full_name || 'Field Tech'}</b>
             </div>
           </div>
         </div>
 
-        {/* Duty Status Selector */}
-        <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
+        {/* Right: Controls, GPS Badge, & Buffer Battery */}
+        <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
+          {/* Duty Status Selector */}
           <select
             style={{
               background: 'rgba(255, 255, 255, 0.08)',
               border: '1px solid rgba(255, 255, 255, 0.15)',
               color: '#fff',
               borderRadius: 'var(--radius-sm)',
-              padding: '6px 10px',
-              fontSize: '12px',
+              padding: '5px 8px',
+              fontSize: '11px',
               fontWeight: 800,
               outline: 'none',
               cursor: 'pointer',
@@ -508,27 +515,41 @@ export default function DriverCockpitPage() {
             ))}
           </select>
 
-          {/* GPS Live Signal Indicator */}
+          {/* Stable GPS Live Signal Indicator */}
           <div style={{
             display: 'flex',
             alignItems: 'center',
-            gap: '5px',
+            gap: '4px',
             background: gpsActive ? 'rgba(16, 185, 129, 0.15)' : 'rgba(239, 68, 68, 0.15)',
             border: `1px solid ${gpsActive ? '#10b981' : '#ef4444'}`,
             borderRadius: 'var(--radius-full)',
             padding: '4px 8px',
             fontSize: '10px',
             fontWeight: 800,
-            color: gpsActive ? '#34d399' : '#f87171'
+            color: gpsActive ? '#34d399' : '#f87171',
+            whiteSpace: 'nowrap'
           }}>
-            <Navigation size={11} className={gpsActive ? 'pulse' : ''} />
+            <Navigation size={10} className={gpsActive ? 'pulse' : ''} />
             {gpsActive ? `GPS LIVE ${gpsAccuracy ? `(±${gpsAccuracy}m)` : ''}` : 'GPS Offline'}
           </div>
 
-          <div style={{ textAlign: 'right' }}>
-            <div style={{ fontSize: '10px', color: 'var(--slate-400)' }}>BUFFER BATTERY</div>
-            <div style={{ fontWeight: 900, fontFamily: 'var(--font-mono)', fontSize: '15px', color: '#10b981' }}>
-              {currentTruck?.current_stored_kwh || 160} / {currentTruck?.battery_capacity_kwh || 200} kWh
+          {/* Buffer Battery Box */}
+          <div style={{
+            background: 'rgba(255, 255, 255, 0.06)',
+            border: '1px solid rgba(255, 255, 255, 0.1)',
+            borderRadius: 'var(--radius-sm)',
+            padding: '4px 10px',
+            textAlign: 'right',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '6px'
+          }}>
+            <BatteryCharging size={16} color="#10b981" />
+            <div>
+              <div style={{ fontSize: '9px', fontWeight: 800, color: 'var(--slate-400)', letterSpacing: '0.05em' }}>BUFFER BATTERY</div>
+              <div style={{ fontWeight: 900, fontFamily: 'var(--font-mono)', fontSize: '13px', color: '#10b981', lineHeight: '1' }}>
+                {currentTruck?.current_stored_kwh || 160} / {currentTruck?.battery_capacity_kwh || 200} kWh
+              </div>
             </div>
           </div>
         </div>

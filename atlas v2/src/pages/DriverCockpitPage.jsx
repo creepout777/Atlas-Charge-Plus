@@ -151,12 +151,15 @@ export default function DriverCockpitPage() {
     };
   }, [myDutyStatus, currentTruck?.id, updateTruck]);
 
-  // Synchronize initial truck coordinates
+  const hasInitializedPosRef = useRef(false);
+
+  // Synchronize initial truck coordinates once on load
   useEffect(() => {
-    if (currentTruck?.current_lat && currentTruck?.current_lng) {
+    if (currentTruck?.current_lat && currentTruck?.current_lng && !hasInitializedPosRef.current) {
+      hasInitializedPosRef.current = true;
       setTruckPos([currentTruck.current_lat, currentTruck.current_lng]);
     }
-  }, [currentTruck?.current_lat, currentTruck?.current_lng]);
+  }, [currentTruck?.id, currentTruck?.current_lat, currentTruck?.current_lng]);
 
   // Play chime and show modal when a new unassigned job arrives
   useEffect(() => {

@@ -52,7 +52,19 @@ export function DataProvider({ children }) {
 
   const refetchTrucks = useCallback(async () => {
     const { data, error } = await fleetService.getTrucks();
-    if (!error && data !== undefined && data !== null) setTrucks(data);
+    if (!error && data !== undefined && data !== null) {
+      setTrucks(prev => {
+        const prevMap = (prev || []).reduce((acc, t) => { acc[t.id] = t; return acc; }, {});
+        return data.map(t => {
+          const prevT = prevMap[t.id];
+          return {
+            ...t,
+            current_lat: prevT?.current_lat || t.current_lat || t.base_lat,
+            current_lng: prevT?.current_lng || t.current_lng || t.base_lng,
+          };
+        });
+      });
+    }
   }, []);
 
   const refetchDrivers = useCallback(async () => {

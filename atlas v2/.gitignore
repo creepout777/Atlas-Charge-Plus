@@ -31,3 +31,12 @@ lerna-debug.log*
 *.sln
 *.sw?
 Thumbs.db
+
+# Android build outputs & IDE settings
+android/app/build/
+android/build/
+android/.gradle/
+android/.idea/
+android/local.properties
+*.iml
+

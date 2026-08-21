@@ -1,11 +1,13 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { Capacitor } from '@capacitor/core';
+import { App as NativeApp } from '@capacitor/app';
+import { StatusBar, Style } from '@capacitor/status-bar';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { DataProvider } from './context/DataContext';
 import { OrderProvider } from './context/OrderContext';
 import TopNav from './components/layout/TopNav';
 import ProtectedRoute from './components/layout/ProtectedRoute';
-import RoleSwitcherWidget from './components/layout/RoleSwitcherWidget';
 import HomePage from './pages/HomePage';
 import ClientDispatchPage from './pages/ClientDispatchPage';
 import DriverCockpitPage from './pages/DriverCockpitPage';
@@ -35,6 +37,27 @@ function SmartHomeWrapper() {
 }
 
 export default function App() {
+  useEffect(() => {
+    if (Capacitor.isNativePlatform()) {
+      // Configure dark status bar for mobile UI
+      StatusBar.setStyle({ style: Style.Dark }).catch(() => {});
+      StatusBar.setBackgroundColor({ color: '#0f172a' }).catch(() => {});
+
+      // Handle Android hardware back button
+      const backListener = NativeApp.addListener('backButton', ({ canGoBack }) => {
+        if (!canGoBack) {
+          NativeApp.exitApp();
+        } else {
+          window.history.back();
+        }
+      });
+
+      return () => {
+        backListener.then(l => l.remove()).catch(() => {});
+      };
+    }
+  }, []);
+
   return (
     <AuthProvider>
       <DataProvider>
@@ -128,7 +151,6 @@ export default function App() {
                   />
                 </Routes>
               </main>
-              <RoleSwitcherWidget />
             </div>
           </BrowserRouter>
         </OrderProvider>

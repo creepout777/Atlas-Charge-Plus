@@ -39,9 +39,10 @@ function SmartHomeWrapper() {
 export default function App() {
   useEffect(() => {
     if (Capacitor.isNativePlatform()) {
-      // Configure true edge-to-edge fullscreen status bar
-      StatusBar.setOverlaysWebView({ overlay: true }).catch(() => {});
+      // Position navbar below camera with dedicated dark status bar
+      StatusBar.setOverlaysWebView({ overlay: false }).catch(() => {});
       StatusBar.setStyle({ style: Style.Dark }).catch(() => {});
+      StatusBar.setBackgroundColor({ color: '#0f172a' }).catch(() => {});
 
       // Handle Android hardware back button
       const backListener = NativeApp.addListener('backButton', ({ canGoBack }) => {

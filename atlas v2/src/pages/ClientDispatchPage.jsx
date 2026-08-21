@@ -145,7 +145,7 @@ export default function ClientDispatchPage() {
     const map = L.map(mapContainerRef.current, {
       center: targetCoords,
       zoom: 14,
-      zoomControl: false,
+      zoomControl: true,
     });
     mapInstanceRef.current = map;
 

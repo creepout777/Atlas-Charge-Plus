@@ -103,7 +103,7 @@ export default function DriverCockpitPage() {
     hasFittedJobBoundsRef.current = false;
   }, [myActiveJob?.id]);
 
-  // Live GPS continuous tracking effect
+  // Live GPS continuous tracking effect (only updates if moved >= 5 meters to prevent fake jitter)
   useEffect(() => {
     if (myDutyStatus === 'OFF_DUTY') {
       setGpsActive(false);
@@ -117,15 +117,24 @@ export default function DriverCockpitPage() {
         const newLng = pos.lng;
         setGpsAccuracy(pos.accuracy ? Math.round(pos.accuracy) : 10);
         setGpsActive(true);
-        setTruckPos([newLat, newLng]);
 
-        if (truckMarkerRef.current) {
-          truckMarkerRef.current.setLatLng([newLat, newLng]);
-        }
+        setTruckPos(prevPos => {
+          const distMeters = calculateDistanceKm(prevPos[0], prevPos[1], newLat, newLng) * 1000;
+          // If moved less than 5 meters, ignore micro-noise so driver marker stays completely still
+          if (distMeters < 5 && prevPos[0] !== 51.5074) {
+            return prevPos;
+          }
 
-        if (currentTruck?.id) {
-          updateTruck(currentTruck.id, { current_lat: newLat, current_lng: newLng }).catch(() => {});
-        }
+          if (truckMarkerRef.current) {
+            truckMarkerRef.current.setLatLng([newLat, newLng]);
+          }
+
+          if (currentTruck?.id) {
+            updateTruck(currentTruck.id, { current_lat: newLat, current_lng: newLng }).catch(() => {});
+          }
+
+          return [newLat, newLng];
+        });
       },
       (err) => {
         console.warn('Driver GPS watch note:', err?.message);
@@ -167,7 +176,7 @@ export default function DriverCockpitPage() {
     const map = L.map(mapContainerRef.current, {
       center: [initialLat, initialLng],
       zoom: 14,
-      zoomControl: false,
+      zoomControl: true,
     });
     mapInstanceRef.current = map;
 
@@ -328,48 +337,12 @@ export default function DriverCockpitPage() {
     }
   }, [myActiveJob, truckPos]);
 
-  // 4. Live GPS Navigation Simulator (Interpolates truck position towards client when EN_ROUTE)
+  // 4. Clean real hardware GPS updates (no artificial movement simulation)
   useEffect(() => {
-    if (myActiveJob && myActiveJob.status === 'EN_ROUTE' && myActiveJob.target_lat && myActiveJob.target_lng) {
-      navGpsTimerRef.current = setInterval(() => {
-        setTruckPos(prev => {
-          const targetLat = myActiveJob.target_lat;
-          const targetLng = myActiveJob.target_lng;
-
-          // Step 8% closer to client each tick
-          const deltaLat = targetLat - prev[0];
-          const deltaLng = targetLng - prev[1];
-          const stepRatio = 0.08;
-
-          const nextLat = parseFloat((prev[0] + deltaLat * stepRatio).toFixed(6));
-          const nextLng = parseFloat((prev[1] + deltaLng * stepRatio).toFixed(6));
-
-          // Calculate heading bearing
-          const bearing = calculateBearing(prev[0], prev[1], targetLat, targetLng);
-
-          // Update Leaflet marker
-          if (truckMarkerRef.current) {
-            truckMarkerRef.current.setLatLng([nextLat, nextLng]);
-            const elem = document.getElementById('driver-truck-marker');
-            if (elem) {
-              elem.style.transform = `rotate(${bearing}deg)`;
-            }
-          }
-
-          // Broadcast GPS to Supabase database so client & dispatcher see smooth movement
-          if (currentTruck?.id) {
-            broadcastGps(currentTruck.id, nextLat, nextLng, bearing);
-          }
-
-          return [nextLat, nextLng];
-        });
-      }, 1500);
-    } else {
+    if (navGpsTimerRef.current) {
       clearInterval(navGpsTimerRef.current);
     }
-
-    return () => clearInterval(navGpsTimerRef.current);
-  }, [myActiveJob?.status, myActiveJob?.target_lat, myActiveJob?.target_lng, currentTruck?.id]);
+  }, []);
 
   // 5. Active Charging Telemetry Setup
   useEffect(() => {

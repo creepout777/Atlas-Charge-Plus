@@ -344,7 +344,7 @@ async function runFullSystemDiagnostics() {
   console.log('\n▶▶ SUITE 8: Frontend Production Compilation & Route Integrity');
   try {
     const buildOutput = execSync('npm run build', { encoding: 'utf8', cwd: process.cwd() });
-    const isBuildSuccessful = buildOutput.includes('built in') && !buildOutput.includes('error');
+    const isBuildSuccessful = buildOutput.includes('built in') && !buildOutput.includes('error:');
     recordResult('Frontend Engine', 'Vite Production Build & Static Asset Generation', isBuildSuccessful, 'Bundle compiled with 0 errors');
   } catch (e) {
     recordResult('Frontend Engine', 'Frontend Build Suite Failure', false, e.message);

@@ -138,7 +138,15 @@ export default function App() {
                       }
                     />
 
-                    {/* Fleet Dispatcher Route */}
+                    {/* Fleet Dispatcher & Admin Route */}
+                    <Route
+                      path="/admin"
+                      element={
+                        <ProtectedRoute allowedRoles={['FLEET_DISPATCHER', 'SUPER_ADMIN']}>
+                          <FleetConsolePage />
+                        </ProtectedRoute>
+                      }
+                    />
                     <Route
                       path="/fleet"
                       element={

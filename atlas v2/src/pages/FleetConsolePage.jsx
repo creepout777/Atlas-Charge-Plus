@@ -143,6 +143,11 @@ export default function FleetConsolePage() {
 
     return () => {
       clearTimeout(timer);
+      if (mapInstanceRef.current) {
+        mapInstanceRef.current.remove();
+        mapInstanceRef.current = null;
+        truckMarkersRef.current = [];
+      }
     };
   }, [activeTab]);
 

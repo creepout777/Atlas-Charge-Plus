@@ -194,9 +194,6 @@ export default function LoginPage() {
           style={{ width: '64px', height: '64px', objectFit: 'contain', margin: '0 auto 12px', filter: 'drop-shadow(0 4px 12px rgba(5, 150, 105, 0.3))' }}
         />
         <h1 style={{ fontSize: '26px', fontWeight: 900 }}>Atlas Charge Plus+ Authentication</h1>
-        <div style={{ fontSize: '13px', color: 'var(--text-secondary)', marginTop: '4px' }}>
-          Production-grade Supabase Auth with RLS, Rate Throttling & Cloudflare Bot Shield
-        </div>
       </div>
 
       {/* Main Auth Card */}
@@ -449,22 +446,6 @@ export default function LoginPage() {
             </div>
           </div>
           <span className="brand-pill">CLIENT</span>
-        </div>
-      </div>
-
-      {/* Production Security Badges */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px', textAlign: 'center', fontSize: '11px', color: 'var(--text-muted)' }}>
-        <div className="card-glass" style={{ padding: '8px' }}>
-          <Lock size={14} style={{ margin: '0 auto 4px', color: '#10b981' }} />
-          <div>Argon2id + TLS 1.3</div>
-        </div>
-        <div className="card-glass" style={{ padding: '8px' }}>
-          <Shield size={14} style={{ margin: '0 auto 4px', color: '#0284c7' }} />
-          <div>RLS Row Security</div>
-        </div>
-        <div className="card-glass" style={{ padding: '8px' }}>
-          <Zap size={14} style={{ margin: '0 auto 4px', color: '#f59e0b' }} />
-          <div>Rate Throttling Active</div>
         </div>
       </div>
     </div>

@@ -23,6 +23,8 @@ import ClientProfilePage from './pages/ClientProfilePage';
 import LoginPage from './pages/LoginPage';
 import ResetPasswordPage from './pages/ResetPasswordPage';
 
+import LogoLoadingScreen from './components/shared/LogoLoadingScreen';
+
 // Smart root: shows marketing homepage for guests, role dashboard for authenticated users
 function SmartHomeWrapper() {
   const { session, currentUser } = useAuth();
@@ -36,36 +38,16 @@ function SmartHomeWrapper() {
   return <HomePage />;
 }
 
-export default function App() {
-  useEffect(() => {
-    if (Capacitor.isNativePlatform()) {
-      // Position navbar below camera with dedicated dark status bar
-      StatusBar.setOverlaysWebView({ overlay: false }).catch(() => {});
-      StatusBar.setStyle({ style: Style.Dark }).catch(() => {});
-      StatusBar.setBackgroundColor({ color: '#0f172a' }).catch(() => {});
+function AppContent() {
+  const { loading } = useAuth();
 
-      // Handle Android hardware back button
-      const backListener = NativeApp.addListener('backButton', ({ canGoBack }) => {
-        if (!canGoBack) {
-          NativeApp.exitApp();
-        } else {
-          window.history.back();
-        }
-      });
-
-      return () => {
-        backListener.then(l => l.remove()).catch(() => {});
-      };
-    }
-  }, []);
+  if (loading) {
+    return <LogoLoadingScreen />;
+  }
 
   return (
-    <AuthProvider>
-      <DataProvider>
-        <OrderProvider>
-          <BrowserRouter>
-            <div className="app-container">
-              <TopNav />
+    <div className="app-container">
+      <TopNav />
               <main>
                 <Routes>
                   {/* Public Pages */}
@@ -153,6 +135,38 @@ export default function App() {
                 </Routes>
               </main>
             </div>
+  );
+}
+
+export default function App() {
+  useEffect(() => {
+    if (Capacitor.isNativePlatform()) {
+      // Position navbar below camera with dedicated dark status bar
+      StatusBar.setOverlaysWebView({ overlay: false }).catch(() => {});
+      StatusBar.setStyle({ style: Style.Dark }).catch(() => {});
+      StatusBar.setBackgroundColor({ color: '#0f172a' }).catch(() => {});
+
+      // Handle Android hardware back button
+      const backListener = NativeApp.addListener('backButton', ({ canGoBack }) => {
+        if (!canGoBack) {
+          NativeApp.exitApp();
+        } else {
+          window.history.back();
+        }
+      });
+
+      return () => {
+        backListener.then(l => l.remove()).catch(() => {});
+      };
+    }
+  }, []);
+
+  return (
+    <AuthProvider>
+      <DataProvider>
+        <OrderProvider>
+          <BrowserRouter>
+            <AppContent />
           </BrowserRouter>
         </OrderProvider>
       </DataProvider>

@@ -1,17 +1,14 @@
 import React from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
+import LogoLoadingScreen from '../shared/LogoLoadingScreen';
 
 export default function ProtectedRoute({ children, allowedRoles = [] }) {
   const { session, currentUser, loading } = useAuth();
   const location = useLocation();
 
   if (loading) {
-    return (
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: 'calc(100vh - 64px)', fontSize: '14px', color: 'var(--text-secondary)' }}>
-        Verifying authenticated Supabase session...
-      </div>
-    );
+    return <LogoLoadingScreen message="Loading" />;
   }
 
   // Not logged in -> Redirect to login page

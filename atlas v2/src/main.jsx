@@ -86,6 +86,17 @@ class ErrorBoundary extends React.Component {
   }
 }
 
+// 3. Remove static HTML launch loader after React initializes
+if (typeof document !== 'undefined') {
+  setTimeout(() => {
+    const loader = document.getElementById('app-loading-screen');
+    if (loader) {
+      loader.classList.add('fade-out');
+      setTimeout(() => loader.remove(), 400);
+    }
+  }, 300);
+}
+
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
     <ErrorBoundary>

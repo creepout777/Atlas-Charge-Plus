@@ -1,20 +1,20 @@
 import React from 'react';
 
-export default function LogoLoadingScreen() {
+export default function LogoLoadingScreen({ message = 'Loading' }) {
   return (
-    <div className="initial-loader-fullscreen">
+    <div className="app-logo-loader-wrapper">
       <style>{`
-        .initial-loader-fullscreen {
-          background-color: #ffffff;
-          height: 100vh;
-          width: 100vw;
+        .app-logo-loader-wrapper {
           position: fixed;
           top: 0;
           left: 0;
-          z-index: 99999;
+          width: 100vw;
+          height: 100vh;
+          background-color: #ffffff;
           display: flex;
           justify-content: center;
           align-items: center;
+          z-index: 99999;
           font-family: system-ui, -apple-system, sans-serif;
         }
 
@@ -134,7 +134,7 @@ export default function LogoLoadingScreen() {
           </svg>
         </div>
 
-        <div className="loading-text">Loading</div>
+        <div className="loading-text">{message}</div>
       </div>
     </div>
   );

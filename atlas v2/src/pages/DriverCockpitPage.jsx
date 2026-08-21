@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import { Truck, Navigation, Zap, CheckCircle2, AlertTriangle, Play, Square, BellRing, Gauge, Battery, Activity, Coffee, Power, Phone, User, Clock, ChevronRight, MapPin, Compass, ShieldCheck } from 'lucide-react';
+import { Truck, Navigation, Zap, CheckCircle2, AlertTriangle, Play, Square, BellRing, Gauge, Battery, BatteryCharging, Activity, Coffee, Power, Phone, User, Clock, ChevronRight, MapPin, Compass, ShieldCheck } from 'lucide-react';
 import { useOrder } from '../context/OrderContext';
 import { useData } from '../context/DataContext';
 import { useAuth } from '../context/AuthContext';

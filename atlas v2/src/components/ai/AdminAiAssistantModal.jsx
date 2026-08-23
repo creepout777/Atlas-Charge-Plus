@@ -198,7 +198,7 @@ export default function AdminAiAssistantModal({ isOpen = true, onClose, embedded
             <div style={{ fontWeight: 900, fontSize: 17, display: 'flex', alignItems: 'center', gap: 8 }}>
               Atlas AI Statistical Intelligence
               <span className="brand-pill" style={{ background: 'rgba(16,185,129,.12)', color: '#10b981', border: '1px solid rgba(16,185,129,.3)', fontSize: 10, padding: '2px 8px' }}>
-                <Sparkles size={10} /> Gemini 2.5 · Free Voice
+                <Sparkles size={10} /> Gemini 3.6 · Free Voice
               </span>
             </div>
             <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>Secure real-time database intelligence · Admin &amp; Dispatcher only</div>

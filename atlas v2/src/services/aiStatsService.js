@@ -149,7 +149,7 @@ export class AiStatsService {
   }
 
   static async callGeminiApi(question, statsData, apiKey) {
-    const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
+    const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=${apiKey}`;
 
     const systemPrompt = `You are Atlas Charge Plus AI, an elite statistical intelligence assistant for Super Admins and Fleet Dispatchers of a mobile EV charging fleet service based in London.
 

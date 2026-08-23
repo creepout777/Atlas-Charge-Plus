@@ -13,8 +13,8 @@ export default function AnalyticsTerminalPage() {
   const [activeTab, setActiveTab] = useState('ai_stats'); // 'ai_stats' | 'insights' | 'breadcrumbs'
 
   // Computed Business Metrics from Live PostgreSQL Data
-  const totalRevenue     = invoices.reduce((sum, inv) => sum + (inv.total_billed_amount || 0), 0);
-  const totalEnergyKwh   = invoices.reduce((sum, inv) => sum + (inv.energy_delivered_amount ? inv.energy_delivered_amount / 0.35 : 35), 0);
+  const totalRevenue = invoices.reduce((sum, inv) => sum + (inv.total_billed_amount || 0), 0);
+  const totalEnergyKwh = invoices.reduce((sum, inv) => sum + (inv.energy_delivered_amount ? inv.energy_delivered_amount / 0.35 : 35), 0);
   const totalCapacityKwh = trucks.reduce((sum, t) => sum + (t.battery_capacity_kwh || 200), 0);
   const currentStoredKwh = trucks.reduce((sum, t) => sum + (t.current_stored_kwh || 0), 0);
   const fleetReadinessPct = totalCapacityKwh > 0 ? ((currentStoredKwh / totalCapacityKwh) * 100).toFixed(1) : 82.5;

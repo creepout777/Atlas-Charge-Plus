@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import { Shield, Truck, Zap, Activity, Layers, MapPin, Gauge, BatteryCharging, CheckCircle2, Clock, AlertTriangle, UserPlus, Search, Edit3, Plus, Trash2, Star, Eye, Lock, RefreshCw, Radio, ShieldCheck, Copy, Mail, Key } from 'lucide-react';
+import { Shield, Truck, Zap, Activity, Layers, MapPin, Gauge, BatteryCharging, CheckCircle2, Clock, AlertTriangle, UserPlus, Search, Edit3, Plus, Trash2, Star, Eye, Lock, RefreshCw, Radio, ShieldCheck, Copy, Mail, Key, Bot } from 'lucide-react';
 import { useData } from '../context/DataContext.jsx';
 import { useOrder } from '../context/OrderContext.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
 import Modal from '../components/layout/Modal.jsx';
+import AdminAiAssistantModal from '../components/ai/AdminAiAssistantModal.jsx';
 import { formatErrorMessage } from '../utils/errorHandler';
 
 // Standardized Status Catalogs
@@ -47,9 +48,10 @@ export default function FleetConsolePage() {
   const isDispatcher = currentUser?.role === 'FLEET_DISPATCHER';
   const canManageOperations = isSuperAdmin || isDispatcher;
 
-  const [activeTab, setActiveTab] = useState('overview'); // 'overview' | 'trucks' | 'drivers' | 'dispatches' | 'labels'
+  const [activeTab, setActiveTab] = useState('overview');
   const [searchLabel, setSearchLabel] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
+  const [showAiModal, setShowAiModal] = useState(false);
 
   const mapContainerRef = useRef(null);
   const mapInstanceRef = useRef(null);
@@ -396,9 +398,12 @@ export default function FleetConsolePage() {
 
   return (
     <div style={{ maxWidth: '1200px', margin: '28px auto', padding: '0 20px' }}>
+      {/* AI Voice Stats Modal */}
+      <AdminAiAssistantModal isOpen={showAiModal} onClose={() => setShowAiModal(false)} />
+
       {/* Top Banner & Mode */}
       <div className="dashboard-header">
-        <div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <h1 style={{ fontSize: '24px', fontWeight: 900 }}>Fleet Operations Console</h1>
             <span className="brand-pill" style={{
@@ -409,6 +414,14 @@ export default function FleetConsolePage() {
               <Shield size={12} /> {isSuperAdmin ? 'Executive Fleet Management' : 'Fleet Dispatch Control'}
             </span>
           </div>
+          {/* AI Stats quick-launch */}
+          <button
+            className="btn-emerald"
+            onClick={() => setShowAiModal(true)}
+            style={{ width: 'auto', padding: '6px 14px', fontSize: '12px', borderRadius: 'var(--radius-full)', display: 'flex', alignItems: 'center', gap: '6px', boxShadow: '0 4px 12px rgba(16,185,129,.25)' }}
+          >
+            <Bot size={15} /> AI Voice Stats
+          </button>
         </div>
 
         {/* Tab Navigation */}

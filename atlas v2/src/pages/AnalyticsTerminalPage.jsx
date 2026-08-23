@@ -1,18 +1,21 @@
 import React, { useState } from 'react';
-import { Activity, Radio, MapPin, Zap, DollarSign, TrendingUp, BatteryCharging, Gauge, Clock, BarChart3, PieChart, ShieldCheck, CheckCircle2 } from 'lucide-react';
+import {
+  MapPin, Zap, DollarSign, TrendingUp, BatteryCharging,
+  Gauge, BarChart3, PieChart, Bot,
+} from 'lucide-react';
 import { useOrder } from '../context/OrderContext';
 import { useData } from '../context/DataContext';
-import TelemetryTerminal from '../components/telemetry/TelemetryTerminal';
+import AdminAiAssistantModal from '../components/ai/AdminAiAssistantModal';
 
 export default function AnalyticsTerminalPage() {
-  const { telemetryLogs, breadcrumbs, ordersList } = useOrder();
+  const { breadcrumbs } = useOrder();
   const { trucks, packages, invoices, reviews } = useData();
-  const [activeTab, setActiveTab] = useState('insights'); // 'insights' | 'telemetry' | 'breadcrumbs'
+  const [activeTab, setActiveTab] = useState('ai_stats'); // 'ai_stats' | 'insights' | 'breadcrumbs'
 
   // Computed Business Metrics from Live PostgreSQL Data
-  const totalRevenue = invoices.reduce((sum, inv) => sum + (inv.total_billed_amount || 0), 0);
-  const totalEnergyKwh = invoices.reduce((sum, inv) => sum + (inv.energy_delivered_amount ? inv.energy_delivered_amount / 0.35 : 35), 0);
-  const totalCapacityKwh = trucks.reduce((sum, t) => sum + (t.total_capacity_kwh || 200), 0);
+  const totalRevenue     = invoices.reduce((sum, inv) => sum + (inv.total_billed_amount || 0), 0);
+  const totalEnergyKwh   = invoices.reduce((sum, inv) => sum + (inv.energy_delivered_amount ? inv.energy_delivered_amount / 0.35 : 35), 0);
+  const totalCapacityKwh = trucks.reduce((sum, t) => sum + (t.battery_capacity_kwh || 200), 0);
   const currentStoredKwh = trucks.reduce((sum, t) => sum + (t.current_stored_kwh || 0), 0);
   const fleetReadinessPct = totalCapacityKwh > 0 ? ((currentStoredKwh / totalCapacityKwh) * 100).toFixed(1) : 82.5;
 
@@ -22,19 +25,23 @@ export default function AnalyticsTerminalPage() {
 
   return (
     <div style={{ maxWidth: '1280px', margin: '32px auto', padding: '0 24px' }}>
-      {/* Header */}
+
+      {/* ── Page Header ── */}
       <div style={{ marginBottom: '24px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '4px' }}>
           <h1 style={{ fontSize: '26px', fontWeight: 900, letterSpacing: '-0.02em' }}>
-            Fleet Analytics & Energy Intelligence
+            Fleet Analytics &amp; Intelligence
           </h1>
-          <span className="brand-pill">
-            <Activity size={12} /> Live Fleet Operations
+          <span className="brand-pill" style={{ background: 'rgba(16,185,129,.12)', color: '#10b981', border: '1px solid rgba(16,185,129,.3)' }}>
+            <Bot size={12} /> AI-Powered Insights
           </span>
         </div>
+        <p style={{ fontSize: '13px', color: 'var(--text-secondary)', margin: 0 }}>
+          Ask questions in natural language — the AI queries your live Supabase database and speaks the answer back.
+        </p>
       </div>
 
-      {/* KPI Cards */}
+      {/* ── KPI Summary Cards ── */}
       <div className="responsive-grid-4" style={{ marginBottom: '24px' }}>
         <div className="card-glass" style={{ padding: '18px 20px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
@@ -55,11 +62,10 @@ export default function AnalyticsTerminalPage() {
             <Zap size={18} color="var(--cyan-primary)" />
           </div>
           <div style={{ fontSize: '26px', fontWeight: 900, fontFamily: 'var(--font-mono)' }}>
-            {(totalEnergyKwh > 0 ? totalEnergyKwh : 985.0).toFixed(1)} <span style={{ fontSize: '14px', color: 'var(--text-muted)', fontWeight: 600 }}>kWh</span>
+            {(totalEnergyKwh > 0 ? totalEnergyKwh : 985.0).toFixed(1)}{' '}
+            <span style={{ fontSize: '14px', color: 'var(--text-muted)', fontWeight: 600 }}>kWh</span>
           </div>
-          <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '4px' }}>
-            Average: 35.0 kWh / session
-          </div>
+          <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '4px' }}>Average: 35.0 kWh / session</div>
         </div>
 
         <div className="card-glass" style={{ padding: '18px 20px' }}>
@@ -89,21 +95,21 @@ export default function AnalyticsTerminalPage() {
         </div>
       </div>
 
-      {/* Navigation Tabs */}
-      <div style={{ display: 'flex', gap: '8px', borderBottom: '1px solid var(--border-subtle)', paddingBottom: '12px', marginBottom: '20px' }}>
+      {/* ── Tab Bar ── */}
+      <div style={{ display: 'flex', gap: '8px', borderBottom: '1px solid var(--border-subtle)', paddingBottom: '12px', marginBottom: '20px', flexWrap: 'wrap' }}>
+        <button
+          className={activeTab === 'ai_stats' ? 'btn-emerald' : 'btn-outline'}
+          style={{ width: 'auto', padding: '8px 16px', fontSize: '13px' }}
+          onClick={() => setActiveTab('ai_stats')}
+        >
+          <Bot size={15} /> AI Stats Intelligence
+        </button>
         <button
           className={activeTab === 'insights' ? 'btn-emerald' : 'btn-outline'}
           style={{ width: 'auto', padding: '8px 16px', fontSize: '13px' }}
           onClick={() => setActiveTab('insights')}
         >
-          <BarChart3 size={15} /> Executive Insights & Packages
-        </button>
-        <button
-          className={activeTab === 'telemetry' ? 'btn-emerald' : 'btn-outline'}
-          style={{ width: 'auto', padding: '8px 16px', fontSize: '13px' }}
-          onClick={() => setActiveTab('telemetry')}
-        >
-          <Activity size={15} /> CAN Bus Telemetry Stream ({telemetryLogs.length})
+          <BarChart3 size={15} /> Executive Insights &amp; Packages
         </button>
         <button
           className={activeTab === 'breadcrumbs' ? 'btn-emerald' : 'btn-outline'}
@@ -114,10 +120,16 @@ export default function AnalyticsTerminalPage() {
         </button>
       </div>
 
-      {/* TAB 1: EXECUTIVE INSIGHTS */}
+      {/* ── TAB: AI Stats Intelligence ── */}
+      {activeTab === 'ai_stats' && (
+        <div className="card-glass" style={{ padding: '24px' }}>
+          <AdminAiAssistantModal embedded={true} />
+        </div>
+      )}
+
+      {/* ── TAB: Executive Insights ── */}
       {activeTab === 'insights' && (
         <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 0.8fr', gap: '20px' }}>
-          {/* Package Popularity Breakdown */}
           <div className="card-glass">
             <h3 style={{ fontSize: '16px', fontWeight: 800, marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
               <PieChart size={18} color="var(--emerald-primary)" /> Charge Package Demand Distribution
@@ -153,37 +165,10 @@ export default function AnalyticsTerminalPage() {
               </div>
             </div>
           </div>
-
         </div>
       )}
 
-      {/* TAB 2: TELEMETRY STREAM */}
-      {activeTab === 'telemetry' && (
-        <div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-            <h3 style={{ fontSize: '16px', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <Activity size={18} color="var(--emerald-dark)" /> Live High-Voltage Power Delivery Stream
-            </h3>
-            <span className="brand-pill">
-              <Radio size={12} /> Live Socket Active
-            </span>
-          </div>
-
-          {telemetryLogs.length > 0 ? (
-            <TelemetryTerminal logs={telemetryLogs} />
-          ) : (
-            <div className="card-glass" style={{ textAlign: 'center', padding: '48px 0', color: 'var(--text-secondary)' }}>
-              <Activity size={36} color="var(--slate-400)" style={{ margin: '0 auto 12px' }} />
-              <div style={{ fontWeight: 800, fontSize: '16px', marginBottom: '4px' }}>Telemetry Stream on Standby</div>
-              <div style={{ fontSize: '13px' }}>
-                When a charging session is active in the Driver Cockpit, live 150kW DC packet telemetry will stream here in real-time.
-              </div>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* TAB 3: GPS BREADCRUMBS */}
+      {/* ── TAB: GPS Breadcrumbs ── */}
       {activeTab === 'breadcrumbs' && (
         <div className="card-glass">
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
@@ -225,6 +210,7 @@ export default function AnalyticsTerminalPage() {
           )}
         </div>
       )}
+
     </div>
   );
 }

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
-import { Zap, Navigation, Shield, Truck, Clock, Layers, Car, CreditCard, Star, Activity, User, LogOut, LogIn, Crown, Menu, X } from 'lucide-react';
+import { Zap, Navigation, Shield, Truck, Clock, Layers, Car, CreditCard, Star, Activity, User, LogOut, LogIn, Crown, Menu, X, Bot } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useData } from '../../context/DataContext';
 import { useOrder } from '../../context/OrderContext';
@@ -95,7 +95,7 @@ export default function TopNav() {
             <Shield size={15} /> Fleet Console ({trucks.length})
           </NavLink>
           <NavLink to="/analytics" onClick={closeMenu} className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
-            <Activity size={15} /> Telemetry
+            <Bot size={15} color="#10b981" /> AI Stats
           </NavLink>
           <NavLink to="/tariffs" onClick={closeMenu} className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
             <Clock size={15} /> Tariffs
@@ -116,7 +116,7 @@ export default function TopNav() {
             <Crown size={15} color="#10b981" /> Fleet Console ({trucks.length})
           </NavLink>
           <NavLink to="/analytics" onClick={closeMenu} className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
-            <Activity size={15} /> Telemetry
+            <Bot size={15} color="#10b981" /> AI Stats
           </NavLink>
           <NavLink to="/tariffs" onClick={closeMenu} className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
             <Clock size={15} /> Tariffs

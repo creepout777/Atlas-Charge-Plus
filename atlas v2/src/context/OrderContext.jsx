@@ -47,6 +47,25 @@ export function OrderProvider({ children }) {
     };
   }, [session, fetchOrders]);
 
+  // Fetch GPS breadcrumbs from DB on load + subscribe to live Realtime inserts
+  useEffect(() => {
+    if (!session) return;
+    const fetchBreadcrumbs = async () => {
+      try {
+        const { data, error } = await ordersService.getBreadcrumbs(500);
+        if (!error && data) setBreadcrumbs(data);
+      } catch (e) {
+        console.warn('Breadcrumbs fetch error:', e.message);
+      }
+    };
+    fetchBreadcrumbs();
+    // Realtime: prepend new waypoints as they arrive from drivers
+    const bcChannel = ordersService.subscribeToBreadcrumbs((row) => {
+      setBreadcrumbs(prev => [row, ...prev.slice(0, 499)]);
+    });
+    return () => bcChannel?.unsubscribe();
+  }, [session]);
+
   // Compute active order based on current user role
   const activeOrder = useMemo(() => {
     if (!currentUser) {

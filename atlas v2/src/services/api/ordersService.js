@@ -99,4 +99,24 @@ export const ordersService = {
       })
       .subscribe();
   },
+
+  async getBreadcrumbs(limit = 500, truckId = null) {
+    let query = supabase
+      .from('truck_gps_breadcrumbs')
+      .select('*, fleet_trucks(truck_code, display_name)')
+      .order('recorded_at', { ascending: false })
+      .limit(limit);
+    if (truckId) query = query.eq('truck_id', truckId);
+    return query;
+  },
+
+  subscribeToBreadcrumbs(onInsert) {
+    return supabase
+      .channel('breadcrumbs:live')
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'truck_gps_breadcrumbs' }, payload => {
+        if (onInsert) onInsert(payload.new);
+      })
+      .subscribe();
+  },
 };
+

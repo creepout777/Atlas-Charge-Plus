@@ -6,6 +6,7 @@ import {
 import { useOrder } from '../context/OrderContext';
 import { useData } from '../context/DataContext';
 import AdminAiAssistantModal from '../components/ai/AdminAiAssistantModal';
+import GpsBreadcrumbMap from '../components/analytics/GpsBreadcrumbMap';
 
 export default function AnalyticsTerminalPage() {
   const { breadcrumbs } = useOrder();
@@ -170,44 +171,11 @@ export default function AnalyticsTerminalPage() {
 
       {/* ── TAB: GPS Breadcrumbs ── */}
       {activeTab === 'breadcrumbs' && (
-        <div className="card-glass">
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-            <h3 style={{ fontSize: '16px', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <MapPin size={18} color="var(--emerald-dark)" /> Fleet GPS Waypoint Breadcrumbs (truck_gps_breadcrumbs)
-            </h3>
-            <span className="brand-pill">{breadcrumbs.length} Coordinates</span>
-          </div>
-
-          {breadcrumbs.length > 0 ? (
-            <div style={{ overflowX: 'auto' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
-                <thead>
-                  <tr style={{ borderBottom: '2px solid var(--border-subtle)', textAlign: 'left' }}>
-                    <th style={{ padding: '10px 8px' }}>Timestamp</th>
-                    <th style={{ padding: '10px 8px' }}>Truck ID</th>
-                    <th style={{ padding: '10px 8px' }}>Coordinates (Lat, Lng)</th>
-                    <th style={{ padding: '10px 8px' }}>Bearing</th>
-                    <th style={{ padding: '10px 8px' }}>Speed</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {breadcrumbs.map((b, i) => (
-                    <tr key={i} style={{ borderBottom: '1px solid var(--border-subtle)' }}>
-                      <td style={{ padding: '10px 8px', color: 'var(--text-muted)' }}>{new Date(b.recorded_at).toLocaleTimeString()}</td>
-                      <td style={{ padding: '10px 8px', fontWeight: 700 }}>{b.truck_id}</td>
-                      <td style={{ padding: '10px 8px', fontFamily: 'var(--font-mono)' }}>{b.lat?.toFixed(4)}, {b.lng?.toFixed(4)}</td>
-                      <td style={{ padding: '10px 8px' }}>{b.bearing}°</td>
-                      <td style={{ padding: '10px 8px', fontWeight: 700 }}>{b.speed_kmh} km/h</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          ) : (
-            <div style={{ textAlign: 'center', padding: '36px 0', color: 'var(--text-muted)', fontSize: '13px' }}>
-              No GPS breadcrumb waypoints recorded yet.
-            </div>
-          )}
+        <div className="card-glass" style={{ padding: '20px' }}>
+          <h3 style={{ fontSize: '16px', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '20px' }}>
+            <MapPin size={18} color="var(--emerald-dark)" /> Fleet GPS Trail Map
+          </h3>
+          <GpsBreadcrumbMap breadcrumbs={breadcrumbs} trucks={trucks} />
         </div>
       )}
 

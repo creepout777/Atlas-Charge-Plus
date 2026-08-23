@@ -131,24 +131,21 @@ export class AiStatsService {
       );
     }
 
+    const apiKey = (customApiKey || import.meta.env.VITE_GEMINI_API_KEY || '').trim();
+
+    if (!apiKey) {
+      throw new Error(
+        'Gemini API Key Required — Click the "API Key" button above to enter your free key from Google AI Studio (aistudio.google.com). The key is stored locally in your browser and never sent to any server other than Google.'
+      );
+    }
+
     onStep('⚡ Fetching live database aggregations from Supabase...');
     const statsData = await this.fetchDatabaseStatistics();
 
-    const apiKey = customApiKey || import.meta.env.VITE_GEMINI_API_KEY || '';
-
     onStep('🧠 Reasoning with Gemini 2.5 Flash AI Model...');
-    if (apiKey) {
-      try {
-        const result = await this.callGeminiApi(question, statsData, apiKey);
-        onStep('📊 Report synthesized successfully!');
-        return result;
-      } catch (err) {
-        console.warn('Gemini API error, falling back to local engine:', err.message);
-      }
-    }
-
-    onStep('📊 Synthesizing statistical report from live data...');
-    return this.generateFallbackReport(question, statsData);
+    const result = await this.callGeminiApi(question, statsData, apiKey);
+    onStep('📊 Report synthesized successfully!');
+    return result;
   }
 
   static async callGeminiApi(question, statsData, apiKey) {

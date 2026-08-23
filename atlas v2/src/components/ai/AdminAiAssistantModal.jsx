@@ -16,6 +16,101 @@ const PRESET_PROMPTS = [
   { icon: '📊', label: 'Full Overview',         prompt: 'Give me a complete executive statistical summary of all fleet operations.' },
 ];
 
+/**
+ * Lightweight inline markdown → JSX renderer.
+ * Supports: h1-h3, **bold**, *italic*, `code`, > blockquote, - lists, --- hr.
+ */
+function renderMarkdown(text) {
+  if (!text) return null;
+  const lines = text.split('\n');
+  const elements = [];
+  let listBuffer = [];
+  let key = 0;
+
+  const flushList = () => {
+    if (listBuffer.length === 0) return;
+    elements.push(
+      <ul key={key++} style={{ margin: '8px 0 8px 20px', display: 'flex', flexDirection: 'column', gap: 4 }}>
+        {listBuffer.map((item, i) => (
+          <li key={i} style={{ fontSize: 13, lineHeight: 1.6, color: 'var(--text-primary)' }}>
+            {inlineRender(item)}
+          </li>
+        ))}
+      </ul>
+    );
+    listBuffer = [];
+  };
+
+  const inlineRender = (str) => {
+    // Bold + italic, bold, italic, inline-code
+    const parts = [];
+    const re = /(\*\*\*(.+?)\*\*\*)|(\*\*(.+?)\*\*)|(\*(.+?)\*)|(`(.+?)`)/g;
+    let last = 0, m;
+    while ((m = re.exec(str)) !== null) {
+      if (m.index > last) parts.push(str.slice(last, m.index));
+      if (m[1]) parts.push(<strong key={m.index}><em>{m[2]}</em></strong>);
+      else if (m[3]) parts.push(<strong key={m.index} style={{ color: 'var(--text-primary)', fontWeight: 800 }}>{m[4]}</strong>);
+      else if (m[5]) parts.push(<em key={m.index}>{m[6]}</em>);
+      else if (m[7]) parts.push(<code key={m.index} style={{ fontFamily: 'var(--font-mono)', fontSize: '0.85em', background: 'rgba(16,185,129,.12)', color: 'var(--emerald-dark)', padding: '1px 5px', borderRadius: 4 }}>{m[8]}</code>);
+      last = re.lastIndex;
+    }
+    if (last < str.length) parts.push(str.slice(last));
+    return parts.length === 1 && typeof parts[0] === 'string' ? parts[0] : parts;
+  };
+
+  lines.forEach((raw) => {
+    const line = raw;
+
+    if (/^---+$/.test(line.trim())) {
+      flushList();
+      elements.push(<hr key={key++} style={{ border: 'none', borderTop: '1px solid var(--border-subtle)', margin: '12px 0' }} />);
+      return;
+    }
+    if (/^### (.+)/.test(line)) {
+      flushList();
+      elements.push(<h3 key={key++} style={{ fontSize: 14, fontWeight: 800, margin: '16px 0 6px', color: 'var(--emerald-darker)', display: 'flex', alignItems: 'center', gap: 6 }}>{inlineRender(line.replace(/^### /, ''))}</h3>);
+      return;
+    }
+    if (/^## (.+)/.test(line)) {
+      flushList();
+      elements.push(<h2 key={key++} style={{ fontSize: 15, fontWeight: 900, margin: '18px 0 6px', color: 'var(--text-primary)' }}>{inlineRender(line.replace(/^## /, ''))}</h2>);
+      return;
+    }
+    if (/^# (.+)/.test(line)) {
+      flushList();
+      elements.push(<h1 key={key++} style={{ fontSize: 17, fontWeight: 900, margin: '18px 0 8px', color: 'var(--text-primary)' }}>{inlineRender(line.replace(/^# /, ''))}</h1>);
+      return;
+    }
+    if (/^> (.+)/.test(line)) {
+      flushList();
+      elements.push(
+        <blockquote key={key++} style={{ borderLeft: '3px solid var(--emerald-primary)', paddingLeft: 12, margin: '10px 0', color: 'var(--text-secondary)', fontStyle: 'italic', fontSize: 13 }}>
+          {inlineRender(line.replace(/^> /, ''))}
+        </blockquote>
+      );
+      return;
+    }
+    if (/^[-*] (.+)/.test(line)) {
+      listBuffer.push(line.replace(/^[-*] /, ''));
+      return;
+    }
+    if (line.trim() === '') {
+      flushList();
+      elements.push(<div key={key++} style={{ height: 6 }} />);
+      return;
+    }
+    flushList();
+    elements.push(
+      <p key={key++} style={{ fontSize: 13, lineHeight: 1.7, margin: '4px 0', color: 'var(--text-primary)' }}>
+        {inlineRender(line)}
+      </p>
+    );
+  });
+
+  flushList();
+  return <div>{elements}</div>;
+}
+
 export default function AdminAiAssistantModal({ isOpen = true, onClose, embedded = false }) {
   const { currentUser } = useAuth();
   const role = currentUser?.role;
@@ -274,9 +369,9 @@ export default function AdminAiAssistantModal({ isOpen = true, onClose, embedded
                 </div>
               )}
 
-              {/* Markdown text */}
-              <div style={{ fontSize: 14, lineHeight: 1.65, color: 'var(--text-primary)', whiteSpace: 'pre-wrap' }}>
-                {report.answerMarkdown}
+              {/* Rendered Markdown */}
+              <div style={{ fontSize: 13, lineHeight: 1.7 }}>
+                {renderMarkdown(report.answerMarkdown)}
               </div>
 
               {/* Table */}

@@ -605,7 +605,7 @@ export default function FleetConsolePage() {
                           Code: <b>{truck.truck_code}</b> · Plate: <b>{truck.license_plate}</b>
                         </div>
                       </div>
-                      
+
                       {canManageOperations ? (
                         <select
                           className="metric-card"

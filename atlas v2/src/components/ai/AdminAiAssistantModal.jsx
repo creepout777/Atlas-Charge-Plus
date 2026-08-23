@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
-  Bot, Mic, MicOff, Volume2, VolumeX, Send, Sparkles,
+  Bot, Mic, MicOff, Send, Sparkles,
   ShieldAlert, Key, CheckCircle2, Copy, RefreshCw,
   ChevronDown, ChevronUp, Database, AlertCircle, X,
 } from 'lucide-react';
@@ -122,7 +122,6 @@ export default function AdminAiAssistantModal({ isOpen = true, onClose, embedded
   const [report, setReport]               = useState(null);
   const [error, setError]                 = useState(null);
   const [isListening, setIsListening]     = useState(false);
-  const [isSpeaking, setIsSpeaking]       = useState(false);
   const [showKeyInput, setShowKeyInput]   = useState(false);
   const [customApiKey, setCustomApiKey]   = useState(() => localStorage.getItem('atlas_gemini_key') || '');
   const [showQueries, setShowQueries]     = useState(false);
@@ -130,7 +129,7 @@ export default function AdminAiAssistantModal({ isOpen = true, onClose, embedded
 
   const bottomRef = useRef(null);
 
-  useEffect(() => () => { voiceService.stopListening(); voiceService.stopSpeech(); }, []);
+  useEffect(() => () => { voiceService.stopListening(); }, []);
 
   const saveApiKey = () => {
     if (customApiKey.trim()) localStorage.setItem('atlas_gemini_key', customApiKey.trim());
@@ -142,7 +141,6 @@ export default function AdminAiAssistantModal({ isOpen = true, onClose, embedded
     const text = q.trim();
     if (!text || loading) return;
     setError(null); setLoading(true); setReport(null);
-    voiceService.stopSpeech(); setIsSpeaking(false);
 
     try {
       const key = customApiKey.trim() || import.meta.env.VITE_GEMINI_API_KEY || '';
@@ -163,13 +161,6 @@ export default function AdminAiAssistantModal({ isOpen = true, onClose, embedded
       (e) => { setError(e); setIsListening(false); },
       (s) => setIsListening(s),
     );
-  };
-
-  const toggleSpeech = () => {
-    if (isSpeaking) { voiceService.stopSpeech(); setIsSpeaking(false); return; }
-    if (!report?.answerMarkdown) return;
-    setIsSpeaking(true);
-    voiceService.speakText(report.answerMarkdown, () => setIsSpeaking(false), () => setIsSpeaking(false));
   };
 
   const copyReport = () => {
@@ -345,10 +336,6 @@ export default function AdminAiAssistantModal({ isOpen = true, onClose, embedded
                   <CheckCircle2 size={11} /> Verified Database Insights
                 </span>
                 <div style={{ display: 'flex', gap: 8 }}>
-                  <button className="btn-outline" style={{ width: 'auto', padding: '4px 10px', fontSize: 12, display: 'flex', alignItems: 'center', gap: 5 }} onClick={toggleSpeech} title="Read aloud (free, no API)">
-                    {isSpeaking ? <VolumeX size={13} color="var(--red-primary)" /> : <Volume2 size={13} color="var(--emerald-primary)" />}
-                    {isSpeaking ? 'Stop' : 'Read Aloud'}
-                  </button>
                   <button className="btn-outline" style={{ width: 'auto', padding: '4px 10px', fontSize: 12, display: 'flex', alignItems: 'center', gap: 5 }} onClick={copyReport}>
                     {copied ? <CheckCircle2 size={13} color="var(--emerald-primary)" /> : <Copy size={13} />}
                     {copied ? 'Copied!' : 'Copy'}

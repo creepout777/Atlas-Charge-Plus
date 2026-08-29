@@ -33,13 +33,7 @@ export default function AnalyticsTerminalPage() {
           <h1 style={{ fontSize: '26px', fontWeight: 900, letterSpacing: '-0.02em' }}>
             Fleet Analytics &amp; Intelligence
           </h1>
-          <span className="brand-pill" style={{ background: 'rgba(16,185,129,.12)', color: '#10b981', border: '1px solid rgba(16,185,129,.3)' }}>
-            <Bot size={12} /> AI-Powered Insights
-          </span>
         </div>
-        <p style={{ fontSize: '13px', color: 'var(--text-secondary)', margin: 0 }}>
-          Ask questions in natural language — the AI queries your live Supabase database and speaks the answer back.
-        </p>
       </div>
 
       {/* ── KPI Summary Cards ── */}

@@ -406,13 +406,6 @@ export default function FleetConsolePage() {
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <h1 style={{ fontSize: '24px', fontWeight: 900 }}>Fleet Operations Console</h1>
-            <span className="brand-pill" style={{
-              background: 'var(--emerald-light)',
-              color: 'var(--emerald-darker)',
-              fontWeight: 800
-            }}>
-              <Shield size={12} /> {isSuperAdmin ? 'Executive Fleet Management' : 'Fleet Dispatch Control'}
-            </span>
           </div>
           {/* AI Stats quick-launch */}
           <button

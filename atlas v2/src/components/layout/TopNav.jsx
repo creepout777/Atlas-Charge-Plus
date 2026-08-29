@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { Zap, Navigation, Shield, Truck, Clock, Layers, Car, CreditCard, Star, Activity, User, LogOut, LogIn, Crown, Menu, X, Bot } from 'lucide-react';
+import { Capacitor } from '@capacitor/core';
 import { useAuth } from '../../context/AuthContext';
 import { useData } from '../../context/DataContext';
 import { useOrder } from '../../context/OrderContext';
@@ -144,7 +145,8 @@ export default function TopNav() {
           >
             {mobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
           </button>
-          <NavLink to="/home" onClick={closeMenu} className="brand-badge">
+          {/* Logo links to /login on Android (no marketing homepage), /home on web */}
+          <NavLink to={Capacitor.isNativePlatform() && !session ? '/login' : '/home'} onClick={closeMenu} className="brand-badge">
             <img
               src="/logo.png"
               alt="Atlas Charge Plus+ Logo"

@@ -1,5 +1,5 @@
 import React, { useEffect, lazy, Suspense } from 'react';
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { Capacitor } from '@capacitor/core';
 import { App as NativeApp } from '@capacitor/app';
 import { StatusBar, Style } from '@capacitor/status-bar';
@@ -26,7 +26,8 @@ const ClientProfilePage = lazy(() => import('./pages/ClientProfilePage'));
 const LoginPage = lazy(() => import('./pages/LoginPage'));
 const ResetPasswordPage = lazy(() => import('./pages/ResetPasswordPage'));
 
-// Smart root: shows marketing homepage for guests, role dashboard for authenticated users
+// Smart root: shows marketing homepage for guests, role dashboard for authenticated users.
+// On Android (native platform) guests are always redirected to /login.
 function SmartHomeWrapper() {
   const { session, currentUser } = useAuth();
 
@@ -34,6 +35,11 @@ function SmartHomeWrapper() {
     if (currentUser.role === 'CLIENT') return <ClientDispatchPage />;
     if (currentUser.role === 'DRIVER') return <DriverCockpitPage />;
     if (currentUser.role === 'FLEET_DISPATCHER' || currentUser.role === 'SUPER_ADMIN') return <FleetConsolePage />;
+  }
+
+  // Android: never show the marketing homepage — go straight to login
+  if (Capacitor.isNativePlatform()) {
+    return <Navigate to="/login" replace />;
   }
 
   return <HomePage />;
@@ -81,7 +87,11 @@ export default function App() {
                     <Route path="/tariffs" element={<TariffsCatalogPage />} />
                     <Route path="/connectors" element={<ConnectorsHardwarePage />} />
                     <Route path="/reviews" element={<ReviewsFeedbackPage />} />
-                    <Route path="/home" element={<HomePage />} />
+                    {/* On Android the marketing homepage is replaced by login */}
+                    <Route
+                      path="/home"
+                      element={Capacitor.isNativePlatform() ? <Navigate to="/login" replace /> : <HomePage />}
+                    />
 
                     {/* Smart Root: Landing page for guests, role dashboard for auth users */}
                     <Route path="/" element={<SmartHomeWrapper />} />

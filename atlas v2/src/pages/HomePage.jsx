@@ -147,11 +147,6 @@ export default function HomePage() {
 
         <div className="hp-hero-inner">
           <div className="hp-hero-content">
-            <Reveal delay={0}>
-              <span className="hp-eyebrow">
-                <Sparkles size={14} /> London's On-Demand Mobile EV Charging Fleet
-              </span>
-            </Reveal>
 
             <Reveal delay={120}>
               <h1 className="hp-hero-title">
@@ -514,14 +509,6 @@ export default function HomePage() {
               <p className="feature-text">Flat £5 callout + £0.35/kWh. No hidden fees, no subscriptions.</p>
             </Reveal>
 
-            {/* Wide feature card with night image */}
-            <Reveal delay={100} className="hp-bento-card hp-bento-wide">
-              <img src="/hero-night.jpg" alt="EV charging at night in London" className="hp-bento-img" data-electro-exclude="true" />
-              <div className="hp-bento-overlay">
-                <h3>Available 24 / 7</h3>
-                <p>Emergency 3 AM boost on a cold January night? Our fleet never sleeps.</p>
-              </div>
-            </Reveal>
           </div>
         </section>
 
